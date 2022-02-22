@@ -77,6 +77,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">espnet2.hubert package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-hubert-init">espnet2.hubert.__init__</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-hubert-hubert-loss">espnet2.hubert.hubert_loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#espnet2-hubert-resnet">espnet2.hubert.resnet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-hubert-espnet-model">espnet2.hubert.espnet_model</a></li>
 </ul>
 </li>
@@ -195,8 +196,96 @@ registered hooks while the latter silently ignores them.</p>
 </dd></dl>
 
 </section>
+<section id="espnet2-hubert-resnet">
+<span id="id3"></span><h2>espnet2.hubert.resnet<a class="headerlink" href="#espnet2-hubert-resnet" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-espnet2.hubert.resnet"></span><dl class="class">
+<dt id="espnet2.hubert.resnet.BasicBlock">
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">BasicBlock</code><span class="sig-paren">(</span><em class="sig-param">inplanes</em>, <em class="sig-param">planes</em>, <em class="sig-param">stride=1</em>, <em class="sig-param">downsample=None</em>, <em class="sig-param">relu_type='relu'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#BasicBlock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.BasicBlock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
+<dl class="attribute">
+<dt id="espnet2.hubert.resnet.BasicBlock.expansion">
+<code class="sig-name descname">expansion</code><em class="property"> = 1</em><a class="headerlink" href="#espnet2.hubert.resnet.BasicBlock.expansion" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.hubert.resnet.BasicBlock.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#BasicBlock.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.BasicBlock.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="espnet2.hubert.resnet.ResEncoder">
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">ResEncoder</code><span class="sig-paren">(</span><em class="sig-param">relu_type</em>, <em class="sig-param">weights</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#ResEncoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.ResEncoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
+<dl class="method">
+<dt id="espnet2.hubert.resnet.ResEncoder.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#ResEncoder.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.ResEncoder.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="espnet2.hubert.resnet.ResEncoder.threeD_to_2D_tensor">
+<code class="sig-name descname">threeD_to_2D_tensor</code><span class="sig-paren">(</span><em class="sig-param">x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#ResEncoder.threeD_to_2D_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.ResEncoder.threeD_to_2D_tensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="espnet2.hubert.resnet.ResNet">
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">ResNet</code><span class="sig-paren">(</span><em class="sig-param">block</em>, <em class="sig-param">layers</em>, <em class="sig-param">num_classes=1000</em>, <em class="sig-param">relu_type='relu'</em>, <em class="sig-param">gamma_zero=False</em>, <em class="sig-param">avg_pool_downsample=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#ResNet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.ResNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
+<dl class="method">
+<dt id="espnet2.hubert.resnet.ResNet.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#ResNet.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.ResNet.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="espnet2.hubert.resnet.conv3x3">
+<code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">conv3x3</code><span class="sig-paren">(</span><em class="sig-param">in_planes</em>, <em class="sig-param">out_planes</em>, <em class="sig-param">stride=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#conv3x3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.conv3x3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="espnet2.hubert.resnet.downsample_basic_block">
+<code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">downsample_basic_block</code><span class="sig-paren">(</span><em class="sig-param">inplanes</em>, <em class="sig-param">outplanes</em>, <em class="sig-param">stride</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#downsample_basic_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.downsample_basic_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="espnet2.hubert.resnet.downsample_basic_block_v2">
+<code class="sig-prename descclassname">espnet2.hubert.resnet.</code><code class="sig-name descname">downsample_basic_block_v2</code><span class="sig-paren">(</span><em class="sig-param">inplanes</em>, <em class="sig-param">outplanes</em>, <em class="sig-param">stride</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/resnet.html#downsample_basic_block_v2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.resnet.downsample_basic_block_v2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
 <section id="espnet2-hubert-espnet-model">
-<span id="id3"></span><h2>espnet2.hubert.espnet_model<a class="headerlink" href="#espnet2-hubert-espnet-model" title="Permalink to this headline">¶</a></h2>
+<span id="id4"></span><h2>espnet2.hubert.espnet_model<a class="headerlink" href="#espnet2-hubert-espnet-model" title="Permalink to this headline">¶</a></h2>
 <span class="target" id="module-espnet2.hubert.espnet_model"></span><dl class="class">
 <dt id="espnet2.hubert.espnet_model.HubertPretrainModel">
 <em class="property">class </em><code class="sig-prename descclassname">espnet2.hubert.espnet_model.</code><code class="sig-name descname">HubertPretrainModel</code><span class="sig-paren">(</span><em class="sig-param">vocab_size: int, token_list: Union[Tuple[str, ...], List[str]], frontend: Optional[espnet2.asr.frontend.abs_frontend.AbsFrontend], specaug: Optional[espnet2.asr.specaug.abs_specaug.AbsSpecAug], normalize: Optional[espnet2.layers.abs_normalize.AbsNormalize], preencoder: Optional[espnet2.asr.preencoder.abs_preencoder.AbsPreEncoder], encoder: espnet2.asr.encoder.abs_encoder.AbsEncoder, ignore_id: int = -1, lsm_weight: float = 0.0, length_normalized_loss: bool = False, report_cer: bool = False, report_wer: bool = False, sym_space: str = '&lt;space&gt;', sym_blank: str = '&lt;blank&gt;', pred_masked_weight: float = 1.0, pred_nomask_weight: float = 0.0, loss_weights: float = 0.0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/hubert/espnet_model.html#HubertPretrainModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.hubert.espnet_model.HubertPretrainModel" title="Permalink to this definition">¶</a></dt>
