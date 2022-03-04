@@ -42,6 +42,8 @@ from espnet2.asr.encoder.contextual_block_conformer_encoder import (
 )
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
 from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
+from espnet2.asr.encoder.avhubert_encoder import FairseqAVHubertEncoder
+from espnet2.asr.encoder.avhubert_encoder import FairseqAVHubertPretrainEncoder
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.default import DefaultFrontend
@@ -89,29 +91,21 @@ frontend_choices = ClassChoices(
 )
 specaug_choices = ClassChoices(
     name="specaug",
-    classes=dict(
-        specaug=SpecAug,
-    ),
+    classes=dict(specaug=SpecAug,),
     type_check=AbsSpecAug,
     default=None,
     optional=True,
 )
 normalize_choices = ClassChoices(
     "normalize",
-    classes=dict(
-        global_mvn=GlobalMVN,
-        utterance_mvn=UtteranceMVN,
-    ),
+    classes=dict(global_mvn=GlobalMVN, utterance_mvn=UtteranceMVN,),
     type_check=AbsNormalize,
     default="utterance_mvn",
     optional=True,
 )
 preencoder_choices = ClassChoices(
     name="preencoder",
-    classes=dict(
-        sinc=LightweightSincConvs,
-        linear=LinearProjection,
-    ),
+    classes=dict(sinc=LightweightSincConvs, linear=LinearProjection,),
     type_check=AbsPreEncoder,
     default=None,
     optional=True,
@@ -129,15 +123,15 @@ encoder_choices = ClassChoices(
         hubert=FairseqHubertEncoder,
         hubert_pretrain=FairseqHubertPretrainEncoder,
         longformer=LongformerEncoder,
+        av_hubert=FairseqAVHubertEncoder,
+        av_hubert_pretrain=FairseqAVHubertPretrainEncoder,
     ),
     type_check=AbsEncoder,
     default="rnn",
 )
 postencoder_choices = ClassChoices(
     name="postencoder",
-    classes=dict(
-        hugging_face_transformers=HuggingFaceTransformersPostEncoder,
-    ),
+    classes=dict(hugging_face_transformers=HuggingFaceTransformersPostEncoder,),
     type_check=AbsPostEncoder,
     default=None,
     optional=True,
@@ -381,7 +375,7 @@ class ASRTask(AbsTask):
     def optional_data_names(
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
-        retval = ()
+        retval = ("video",)
         assert check_return_type(retval)
         return retval
 
@@ -457,11 +451,7 @@ class ASRTask(AbsTask):
         decoder_class = decoder_choices.get_class(args.decoder)
 
         if args.decoder == "transducer":
-            decoder = decoder_class(
-                vocab_size,
-                embed_pad=0,
-                **args.decoder_conf,
-            )
+            decoder = decoder_class(vocab_size, embed_pad=0, **args.decoder_conf,)
 
             joint_network = JointNetwork(
                 vocab_size,
