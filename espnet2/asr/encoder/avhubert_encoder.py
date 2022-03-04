@@ -1,3 +1,4 @@
+# Copyright 2022 Roshan Sharma
 # Copyright 2021 Tianzi Wang
 # Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0
 
@@ -26,7 +27,7 @@ from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 
 
-class FairseqHubertEncoder(AbsEncoder):
+class FairseqAVHubertEncoder(AbsEncoder):
     """FairSeq Hubert encoder module, used for loading pretrained weight and finetuning
 
     Args:
@@ -48,8 +49,8 @@ class FairseqHubertEncoder(AbsEncoder):
     def __init__(
         self,
         input_size: int,
-        hubert_url: str = "./",
-        hubert_dir_path: str = "./",
+        avhubert_url: str = "./",
+        avhubert_dir_path: str = "./",
         output_size: int = 256,
         normalize_before: bool = False,
         freeze_finetune_updates: int = 0,
@@ -67,13 +68,19 @@ class FairseqHubertEncoder(AbsEncoder):
         mask_channel_selection: str = "static",
         layerdrop: float = 0.1,
         feature_grad_mult: float = 0.0,
+        video_input_size: int = -1,
+        video_frontend: str = "resnet",
+        fuse_dimension: int = 1,
+        convert_longformer: bool = False,
+        pretrained_model_path:str = None,
+
     ):
         assert check_argument_types()
         super().__init__()
         self.apply_mask = apply_mask
         try:
             import fairseq
-            from fairseq.models.hubert.hubert import HubertModel
+            from espnet2.avhubert.hubert import AVHubertModel
         except Exception as e:
             print("Error: FairSeq is not properly installed.")
             print("Please install FairSeq: cd ${MAIN_ROOT}/tools && make fairseq.done")
@@ -93,15 +100,12 @@ class FairseqHubertEncoder(AbsEncoder):
             "mask_channel_other": mask_channel_other,
             "encoder_layerdrop": layerdrop,
             "feature_grad_mult": feature_grad_mult,
-            "data": hubert_dir_path,
+            "data": avhubert_dir_path,
         }
 
-        if hubert_url == "espnet":
-            self.hubert_model_path = hubert_dir_path
-            s = torch.load(
-                self.hubert_model_path,
-                map_location=torch.device("cpu"),
-            )
+        if avhubert_url == "espnet":
+            self.hubert_model_path = avhubert_dir_path
+            s = torch.load(self.hubert_model_path, map_location=torch.device("cpu"),)
 
             if all("encoder.encoder" in k for k in s):
                 try:
@@ -114,15 +118,14 @@ class FairseqHubertEncoder(AbsEncoder):
                     raise e
 
             config_file = os.path.join(
-                "/".join(self.hubert_model_path.split("/")[:-1]),
-                "config.yaml",
+                "/".join(self.hubert_model_path.split("/")[:-1]), "config.yaml",
             )
             config_file = Path(config_file)
 
             with config_file.open("r", encoding="utf-8") as f:
                 self.pretrained_cfg = yaml.safe_load(f)
 
-            model = FairseqHubertPretrainEncoder(
+            model = AVHubertPretrainEncoder(
                 input_size=self.pretrained_cfg["input_size"],
                 hubert_dict=self.pretrained_cfg["hubert_dict"],
                 **self.pretrained_cfg["encoder_conf"],
@@ -134,16 +137,15 @@ class FairseqHubertEncoder(AbsEncoder):
 
         else:
 
-            self.hubert_model_path = download_hubert(hubert_url, hubert_dir_path)
+            self.hubert_model_path = avhubert_dir_path
+            # download_avhubert(avhubert_url, avhubert_dir_path)
 
             (
                 models,
                 self.pretrained_cfg,
                 task,
             ) = fairseq.checkpoint_utils.load_model_ensemble_and_task(
-                [self.hubert_model_path],
-                arg_overrides=arg_overrides,
-                strict=False,
+                [self.hubert_model_path], arg_overrides=arg_overrides, strict=False,
             )
             model = models[0]
 
@@ -152,7 +154,7 @@ class FairseqHubertEncoder(AbsEncoder):
 
         self._output_size = output_size
 
-        if not isinstance(model, HubertModel):
+        if not isinstance(model, AVHubertModel):
             try:
                 model = model.hubert_encoder.hubert_model
             except Exception as e:
@@ -169,9 +171,7 @@ class FairseqHubertEncoder(AbsEncoder):
             self.after_norm = LayerNorm(output_size)
 
         if output_size and output_size != d:
-            self.output_layer = torch.nn.Sequential(
-                torch.nn.Linear(d, output_size),
-            )
+            self.output_layer = torch.nn.Sequential(torch.nn.Linear(d, output_size),)
         else:
             self.output_layer = None
 
@@ -237,8 +237,8 @@ class FairseqHubertEncoder(AbsEncoder):
         logging.info("Pretrained Hubert model parameters reloaded!")
 
 
-class FairseqHubertPretrainEncoder(AbsEncoder):
-    """FairSeq Hubert pretrain encoder module, only used for pretraining stage
+class FairseqAVHubertPretrainEncoder(AbsEncoder):
+    """AVHubert pretrain encoder module, only used for pretraining stage
 
     Args:
         input_size: input dim
@@ -270,6 +270,14 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
         checkpoint_activations: bool = False,
         sample_rate: int = 16000,
         use_amp: bool = False,
+        video_input_size: int = -1,
+        video_frontend: str = "resnet",
+        fuse_dimension: int = 1,
+        convert_longformer: bool = False,
+        attention_windows: list = None,
+        attention_dilation: list = None,
+        attention_mode: str = "tvm",
+        pretrained_model_path:str = None,
         **kwargs,
     ):
         assert check_argument_types()
@@ -278,10 +286,10 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
         self.use_amp = use_amp
         try:
             from fairseq.data.dictionary import Dictionary
-            from fairseq.models.hubert.hubert import (
-                HubertModel,  # noqa: H301
-                HubertConfig,  # noqa: H301
-                HubertPretrainingConfig,  # noqa: H301
+            from espnet2.avhubert.hubert import (
+                AVHubertConfig,
+                AvHubertModel,
+                AVHubertPretrainingConfig,
             )
         except Exception as e:
             print("Error: FairSeq is not properly installed.")
@@ -300,13 +308,13 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
             "checkpoint_activations": checkpoint_activations,
         }
         cfg_overides = {**cfg_overides, **kwargs}
-        self.cfg = HubertConfig()
+        self.cfg = AVHubertConfig()
 
         for key, value in cfg_overides.items():
             if hasattr(self.cfg, key):
                 setattr(self.cfg, key, value)
 
-        hubert_task_cfg = HubertPretrainingConfig()
+        hubert_task_cfg = AVHubertPretrainingConfig()
         hubert_task_cfg_overides = {
             "label_rate": label_rate,
             "sample_rate": sample_rate,
@@ -317,7 +325,37 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
 
         d = Dictionary()
         self._build_dictionary(d, hubert_dict)
-        self.encoder = HubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
+        self.encoder = AvHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
+        if convert_longformer:
+            import longformer
+            from longformer.longformer import LongformerConfig
+
+            config = LongformerConfig(
+                attention_window=attention_windows,
+                attention_dilation=attention_dilation,
+                autoregressive=False,
+                num_attention_heads=attention_heads,
+                hidden_size=output_size,
+                attention_probs_dropout_prob=dropout_rate,
+                attention_mode=attention_mode,
+            )
+            for i, layer in enumerate(self.encoder.encoder.layers):
+                longformer_self_attn = LongformerSelfAttention(config, layer_id=i)
+                longformer_self_attn.query = layer.attention.self.query
+                longformer_self_attn.key = layer.attention.self.key
+                longformer_self_attn.value = layer.attention.self.value
+
+                longformer_self_attn.query_global = copy.deepcopy(
+                    layer.attention.self.query
+                )
+                longformer_self_attn.key_global = copy.deepcopy(
+                    layer.attention.self.key
+                )
+                longformer_self_attn.value_global = copy.deepcopy(
+                    layer.attention.self.value
+                )
+
+                layer.attention.self = longformer_self_attn
 
     def _build_dictionary(self, dictionary, hubert_dict_path):
         if os.path.exists(f"{hubert_dict_path}"):
@@ -377,17 +415,17 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
         )
 
 
-def download_hubert(model_url, dir_path):
-    os.makedirs(dir_path, exist_ok=True)
+# def download_avhubert(model_url, dir_path):
+#     os.makedirs(dir_path, exist_ok=True)
 
-    model_name = model_url.split("/")[-1]
-    model_path = os.path.join(dir_path, model_name)
+#     model_name = model_url.split("/")[-1]
+#     model_path = os.path.join(dir_path, model_name)
 
-    with FileLock(model_path + ".lock"):
-        if not os.path.exists(model_path):
-            torch.hub.download_url_to_file(model_url, model_path)
-            logging.info(f"Hubert model downloaded {model_path}")
-        else:
-            logging.info(f"Hubert model {model_path} already exists.")
+#     with FileLock(model_path + ".lock"):
+#         if not os.path.exists(model_path):
+#             torch.hub.download_url_to_file(model_url, model_path)
+#             logging.info(f"Hubert model downloaded {model_path}")
+#         else:
+#             logging.info(f"Hubert model {model_path} already exists.")
 
-    return model_path
+#     return model_path
