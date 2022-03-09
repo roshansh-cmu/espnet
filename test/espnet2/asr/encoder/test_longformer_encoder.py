@@ -1,7 +1,8 @@
+from espnet2.asr.encoder.longformer_encoder import LongformerEncoder
 import pytest
 import torch
 
-from espnet2.asr.encoder.longformer_encoder import LongformerEncoder
+pytest.importorskip("longformer")
 
 
 @pytest.mark.parametrize(
@@ -21,6 +22,7 @@ def test_encoder_forward_backward(
     pos_enc_layer_type,
     selfattention_layer_type,
 ):
+    pytest.importorskip("longformer")
     encoder = LongformerEncoder(
         20,
         output_size=2,
@@ -38,7 +40,7 @@ def test_encoder_forward_backward(
         positionwise_layer_type=positionwise_layer_type,
         attention_windows=[10, 10],
         attention_dilation=[1, 1],
-        attention_mode="tvm",
+        attention_mode="sliding_chunks",
     )
     if input_layer == "embed":
         x = torch.randint(0, 10, [2, 32])
@@ -50,8 +52,9 @@ def test_encoder_forward_backward(
 
 
 def test_encoder_invalid_layer_type():
+    pytest.importorskip("longformer")
     with pytest.raises(ValueError):
-        LongformerEncoder(20, rel_pos_type="dummy")
+        LongformerEncoder(20, pos_enc_layer_type="abc_pos")
     with pytest.raises(ValueError):
         LongformerEncoder(20, pos_enc_layer_type="dummy")
     with pytest.raises(ValueError):
@@ -60,11 +63,21 @@ def test_encoder_invalid_layer_type():
         )
 
 
+def test_encoder_invalid_windows_parameter():
+    pytest.importorskip("longformer")
+    with pytest.raises(ValueError):
+        LongformerEncoder(20, attention_windows=[1, 1], num_blocks=4)
+    with pytest.raises(ValueError):
+        LongformerEncoder(20, attention_dilation=[1, 1], num_blocks=4)
+
+
 def test_encoder_output_size():
+    pytest.importorskip("longformer")
     encoder = LongformerEncoder(20, output_size=256)
     assert encoder.output_size() == 256
 
 
 def test_encoder_invalid_type():
+    pytest.importorskip("longformer")
     with pytest.raises(ValueError):
         LongformerEncoder(20, input_layer="fff")

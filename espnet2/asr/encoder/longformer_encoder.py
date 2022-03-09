@@ -72,7 +72,7 @@ class LongformerEncoder(ConformerEncoder):
         attention_dilation(list): Layer-wise attention dilation sizes
             for longformer self-attn
         attention_mode(str): Implementation for longformer self-attn.
-            Default="tvm"
+            Default="sliding_chunks"
             Choose 'n2', 'tvm' or 'sliding_chunks'. More details in
             https://github.com/allenai/longformer
 
@@ -104,15 +104,16 @@ class LongformerEncoder(ConformerEncoder):
         padding_idx: int = -1,
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
-        attention_windows: list = None,
-        attention_dilation: list = None,
-        attention_mode: str = "tvm",
+        attention_windows: list = [100, 100, 100, 100, 100, 100],
+        attention_dilation: list = [1, 1, 1, 1, 1, 1],
+        attention_mode: str = "sliding_chunks",
     ):
         assert check_argument_types()
         super().__init__(input_size)
         self._output_size = output_size
 
         activation = get_activation(activation_type)
+
         if pos_enc_layer_type == "abs_pos":
             pos_enc_class = PositionalEncoding
         else:
@@ -120,6 +121,29 @@ class LongformerEncoder(ConformerEncoder):
                 "incorrect or unknown pos_enc_layer: "
                 + pos_enc_layer_type
                 + "Use abs_pos"
+            )
+
+        if len(attention_dilation) != num_blocks:
+            raise ValueError(
+                "incorrect attention_dilation parameter of length"
+                + str(len(attention_dilation))
+                + " does not match num_blocks"
+                + str(num_blocks)
+            )
+
+        if len(attention_windows) != num_blocks:
+            raise ValueError(
+                "incorrect attention_windows parameter of length"
+                + str(len(attention_windows))
+                + " does not match num_blocks"
+                + str(num_blocks)
+            )
+
+        if attention_mode != "tvm" and max(attention_dilation) != 1:
+            raise ValueError(
+                "incorrect attention mode for dilation: "
+                + attention_mode
+                + "Use attention_mode=tvm with Cuda Kernel"
             )
 
         if input_layer == "linear":
@@ -173,6 +197,7 @@ class LongformerEncoder(ConformerEncoder):
             )
         else:
             raise ValueError("unknown input_layer: " + input_layer)
+
         self.normalize_before = normalize_before
         if positionwise_layer_type == "linear":
             positionwise_layer = PositionwiseFeedForward

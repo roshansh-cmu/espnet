@@ -71,9 +71,9 @@ class FairseqAVHubertEncoder(AbsEncoder):
         video_input_size: int = -1,
         video_frontend: str = "resnet",
         fuse_dimension: int = 1,
-        convert_longformer: bool = False,
-        pretrained_model_path:str = None,
-
+        convert_attention: bool = False,
+        attention_type: str = "cos",
+        pretrained_model_path: str = None,
     ):
         assert check_argument_types()
         super().__init__()
@@ -273,11 +273,12 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         video_input_size: int = -1,
         video_frontend: str = "resnet",
         fuse_dimension: int = 1,
-        convert_longformer: bool = False,
+        convert_attention: bool = False,
+        attention_type: str = "cos",
         attention_windows: list = None,
         attention_dilation: list = None,
         attention_mode: str = "tvm",
-        pretrained_model_path:str = None,
+        pretrained_model_path: str = None,
         **kwargs,
     ):
         assert check_argument_types()
@@ -325,6 +326,7 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
 
         d = Dictionary()
         self._build_dictionary(d, hubert_dict)
+
         self.encoder = AvHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
         if convert_longformer:
             import longformer
