@@ -1,0 +1,78 @@
+Read 84697 files 
+['cv05.split', 'train_abs_concept', 'dev5_test_sum', 'cv05_utt', 'tr_cv05_sum', 'cv_abs_concept', 'cv05', 'tr2000h.split', 'dev5_test', 'dev5_test_utt', 'cv05_concept', 'mytest.split', 'all.split', 'tr_2000h_sum', 'dev5_test_concept', 'dev5test.split', 'test_abs_concept', 'tr_2000h_concept', 'cv05_sum_concept', 'dev5_test_sum_long.txt', 'mycv.split', 'bart_tokens.txt', 'nlsyms', 'cv05_sum', 'asr_utt_all', 'tr_2000h', 'cv05_sum_trim', 'dev5_test_predasr', 'mytrain.split', 'tr_2000h_sum_trim', 'tr_2000h_utt', 'dev5_test_asr', 'all_video_trans', 'conformer_asr_hyp', 'tr_2000h_sum_concept', 'en_token_list', 'action_numpy', 'dev5_test_sum_small']
+cv05.split
+Is not dir cv05.split no wav.scp
+train_abs_concept
+Is not dir train_abs_concept no wav.scp
+dev5_test_sum
+dev5_test_sum Missing Keys 0 2127 2127 []
+cv05_utt
+cv05_utt Missing Keys 0 2520 2520 []
+tr_cv05_sum
+In Dir tr_cv05_sum no wav.scp
+cv_abs_concept
+Is not dir cv_abs_concept no wav.scp
+cv05
+cv05 Missing Keys 0 2520 2520 []
+tr2000h.split
+Is not dir tr2000h.split no wav.scp
+dev5_test
+dev5_test Missing Keys 0 2127 2127 []
+dev5_test_utt
+dev5_test_utt Missing Keys 0 2127 2127 []
+cv05_concept
+cv05_concept Missing Keys 0 2520 2520 []
+mytest.split
+Is not dir mytest.split no wav.scp
+all.split
+Is not dir all.split no wav.scp
+tr_2000h_sum
+tr_2000h_sum Missing Keys 0 68336 68336 []
+dev5_test_concept
+dev5_test_concept Missing Keys 0 2127 2127 []
+dev5test.split
+Is not dir dev5test.split no wav.scp
+test_abs_concept
+Is not dir test_abs_concept no wav.scp
+tr_2000h_concept
+tr_2000h_concept Missing Keys 0 68335 68335 []
+cv05_sum_concept
+cv05_sum_concept Missing Keys 0 2520 2520 []
+dev5_test_sum_long.txt
+Is not dir dev5_test_sum_long.txt no wav.scp
+mycv.split
+Is not dir mycv.split no wav.scp
+bart_tokens.txt
+Is not dir bart_tokens.txt no wav.scp
+nlsyms
+Is not dir nlsyms no wav.scp
+cv05_sum
+cv05_sum Missing Keys 0 2520 2520 []
+asr_utt_all
+asr_utt_all Missing Keys 7 84218 84225 ['ZOYhH1iaEJw', 'v_2qOif6P44', 'v_T5QYHM0Sw', 'v_YhI6ssW4Y', 'v_mo36VmK9A', 'v_xtFDnf_6k', 'v_y-wVL2GSM']
+tr_2000h
+tr_2000h Missing Keys 0 68336 68336 []
+cv05_sum_trim
+cv05_sum_trim Missing Keys 0 2520 2520 []
+dev5_test_predasr
+dev5_test_predasr Missing Keys 0 2127 2127 []
+mytrain.split
+Is not dir mytrain.split no wav.scp
+tr_2000h_sum_trim
+tr_2000h_sum_trim Missing Keys 0 68336 68336 []
+tr_2000h_utt
+tr_2000h_utt Missing Keys 0 68336 68336 []
+dev5_test_asr
+dev5_test_asr Missing Keys 0 2127 2127 []
+all_video_trans
+Is not dir all_video_trans no wav.scp
+conformer_asr_hyp
+Is not dir conformer_asr_hyp no wav.scp
+tr_2000h_sum_concept
+tr_2000h_sum_concept Missing Keys 0 68335 68335 []
+en_token_list
+In Dir en_token_list no wav.scp
+action_numpy
+In Dir action_numpy no wav.scp
+dev5_test_sum_small
+Is not dir dev5_test_sum_small no wav.scp

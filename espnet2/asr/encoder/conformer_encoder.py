@@ -105,6 +105,7 @@ class ConformerEncoder(AbsEncoder):
         padding_idx: int = -1,
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
+        video_fusion_type: "concat",
     ):
         assert check_argument_types()
         super().__init__()
@@ -271,6 +272,7 @@ class ConformerEncoder(AbsEncoder):
             assert 0 < min(interctc_layer_idx) and max(interctc_layer_idx) < num_blocks
         self.interctc_use_conditioning = interctc_use_conditioning
         self.conditioning_layer = None
+        self.video_fusion_type = video_fusion_type
 
     def output_size(self) -> int:
         return self._output_size
@@ -281,6 +283,8 @@ class ConformerEncoder(AbsEncoder):
         ilens: torch.Tensor,
         prev_states: torch.Tensor = None,
         ctc: CTC = None,
+        video:torch.Tensor = None,
+        video_lengths: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Calculate forward propagation.
 
@@ -296,7 +300,6 @@ class ConformerEncoder(AbsEncoder):
 
         """
         masks = (~make_pad_mask(ilens)[:, None, :]).to(xs_pad.device)
-
         if (
             isinstance(self.embed, Conv2dSubsampling)
             or isinstance(self.embed, Conv2dSubsampling2)
@@ -314,6 +317,10 @@ class ConformerEncoder(AbsEncoder):
             xs_pad, masks = self.embed(xs_pad, masks)
         else:
             xs_pad = self.embed(xs_pad)
+        if video:
+            video_mask = (~make_pad_mask(video_lengths)[:, None, :]).to(video.device)
+            xs_pad = torch.cat((xs_pad,video),dim=1)
+            masks = 
 
         intermediate_outs = []
         if len(self.interctc_layer_idx) == 0:
