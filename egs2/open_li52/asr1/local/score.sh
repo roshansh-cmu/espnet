@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 score_lang_id=true
 dump_dir=dump
 . utils/parse_options.sh
@@ -20,7 +20,7 @@ else
 fi
 
 if [ "${score_lang_id}" = false ]; then
-    echo "Training without language id, skip langauge identification scoring"
+    echo "Training without language id, skip language identification scoring"
     exit 1
 fi
 

@@ -12,17 +12,12 @@ import random
 import subprocess
 import sys
 
-from distutils.version import LooseVersion
-
 import configargparse
 import numpy as np
-import torch
 
 from espnet import __version__
 from espnet.utils.cli_utils import strtobool
 from espnet.utils.training.batchfy import BATCH_COUNT_CHOICES
-
-is_torch_1_2_plus = LooseVersion(torch.__version__) >= LooseVersion("1.2")
 
 
 # NOTE: you need this func to generate our sphinx doc
@@ -140,7 +135,7 @@ def get_parser(parser=None, required=True):
         "--ctc_type",
         default="warpctc",
         type=str,
-        choices=["builtin", "warpctc", "gtnctc"],
+        choices=["builtin", "warpctc", "gtnctc", "cudnnctc"],
         help="Type of CTC implementation to calculate loss.",
     )
     parser.add_argument(
@@ -379,7 +374,7 @@ def get_parser(parser=None, required=True):
     )
     parser.add_argument(
         "--dec-init-mods",
-        default="att., dec.",
+        default="att.,dec.",
         type=lambda s: [str(mod) for mod in s.split(",") if s != ""],
         help="List of decoder modules to initialize, separated by a comma.",
     )
@@ -535,7 +530,10 @@ def main(cmd_args):
     from espnet.utils.dynamic_import import dynamic_import
 
     if args.model_module is None:
-        model_module = "espnet.nets." + args.backend + "_backend.e2e_asr:E2E"
+        if args.num_spkrs == 1:
+            model_module = "espnet.nets." + args.backend + "_backend.e2e_asr:E2E"
+        else:
+            model_module = "espnet.nets." + args.backend + "_backend.e2e_asr_mix:E2E"
     else:
         model_module = args.model_module
     model_class = dynamic_import(model_module)
@@ -583,7 +581,7 @@ def main(cmd_args):
             else:
                 ngpu = len(p.stderr.decode().split("\n")) - 1
     else:
-        if is_torch_1_2_plus and args.ngpu != 1:
+        if args.ngpu != 1:
             logging.debug(
                 "There are some bugs with multi-GPU processing in PyTorch 1.2+"
                 + " (see https://github.com/pytorch/pytorch/issues/21108)"

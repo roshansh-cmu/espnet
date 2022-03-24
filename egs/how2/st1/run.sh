@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2019 Kyoto University (Hirofumi Inaguma)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
@@ -7,7 +7,7 @@
 . ./cmd.sh || exit 1;
 
 # general configuration
-backend=pytorch # chainer or pytorch
+backend=pytorch
 stage=0         # start from -1 if you need to start from data download
 stop_stage=100
 ngpu=1          # number of gpus during training ("0" uses cpu, otherwise use gpu)
@@ -95,48 +95,21 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     # Divide into source and target languages
     for x in train val dev5; do
         utils/data/get_utt2num_frames.sh data/${x}
-        local/divide_lang.sh ${x}
+        divide_lang.sh ${x} "en pt"
     done
 
+    # remove long and short utterances
     for x in train val; do
-        # remove utt having more than 3000 frames
-        # remove utt having more than 400 characters
-        for lang in en pt; do
-            remove_longshortdata.sh --maxframes 3000 --maxchars 400 data/${x}.${lang} data/${x}.${lang}.tmp
-        done
-
-        # Match the number of utterances between source and target languages
-        # extract common lines
-        cut -f 1 -d " " data/${x}.en.tmp/text > data/${x}.pt.tmp/reclist1
-        cut -f 1 -d " " data/${x}.pt.tmp/text > data/${x}.pt.tmp/reclist2
-        comm -12 data/${x}.pt.tmp/reclist1 data/${x}.pt.tmp/reclist2 > data/${x}.pt.tmp/reclist
-
-        for lang in en pt; do
-            reduce_data_dir.sh data/${x}.${lang}.tmp data/${x}.pt.tmp/reclist data/${x}.${lang}
-            utils/fix_data_dir.sh --utt_extra_files "text.tc text.lc text.lc.rm" data/${x}.${lang}
-        done
-        rm -rf data/${x}.*.tmp
+        clean_corpus.sh --maxframes 3000 --maxchars 400 --utt_extra_files "text.tc text.lc text.lc.rm" data/${x} "en pt"
     done
 
     # compute global CMVN
     compute-cmvn-stats scp:data/${train_set}/feats.scp data/${train_set}/cmvn.ark
 
     # dump features for training
-    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${feat_tr_dir}/storage ]; then
-      utils/create_split_dir.pl \
-          /export/b{14,15,16,17}/${USER}/espnet-data/egs/how2/st1/dump/${train_set}/delta${do_delta}/storage \
-          ${feat_tr_dir}/storage
-    fi
-    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${feat_dt_dir}/storage ]; then
-      utils/create_split_dir.pl \
-          /export/b{14,15,16,17}/${USER}/espnet-data/egs/how2/st1/dump/${train_dev}/delta${do_delta}/storage \
-          ${feat_dt_dir}/storage
-    fi
     dump.sh --cmd "$train_cmd" --nj 80 --do_delta $do_delta \
         data/${train_set}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/${train_set} ${feat_tr_dir}
-    dump.sh --cmd "$train_cmd" --nj 32 --do_delta $do_delta \
-        data/${train_dev}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/${train_dev} ${feat_dt_dir}
-    for x in ${trans_set}; do
+    for x in ${train_dev} ${trans_set}; do
         feat_trans_dir=${dumpdir}/${x}/delta${do_delta}; mkdir -p ${feat_trans_dir}
         dump.sh --cmd "$train_cmd" --nj 32 --do_delta $do_delta \
             data/${x}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/trans/${x} \
@@ -168,13 +141,11 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     wc -l ${dict}
 
     echo "make json files"
-    data2json.sh --nj 16 --feat ${feat_tr_dir}/feats.scp --text data/${train_set}/text.${tgt_case} --bpecode ${bpemodel}.model --lang pt \
+    data2json.sh --nj 16 --feat ${feat_tr_dir}/feats.scp --text data/${train_set}/text.${tgt_case} --bpecode ${bpemodel}.model --lang "pt" \
         data/${train_set} ${dict} > ${feat_tr_dir}/data_${bpemode}${nbpe}.${src_case}_${tgt_case}.json
-    data2json.sh --feat ${feat_dt_dir}/feats.scp --text data/${train_dev}/text.${tgt_case} --bpecode ${bpemodel}.model --lang pt \
-        data/${train_dev} ${dict} > ${feat_dt_dir}/data_${bpemode}${nbpe}.${src_case}_${tgt_case}.json
-    for x in ${trans_set}; do
+    for x in ${train_dev} ${trans_set}; do
         feat_trans_dir=${dumpdir}/${x}/delta${do_delta}
-        data2json.sh --feat ${feat_trans_dir}/feats.scp --text data/${x}/text.${tgt_case} --bpecode ${bpemodel}.model --lang pt \
+        data2json.sh --feat ${feat_trans_dir}/feats.scp --text data/${x}/text.${tgt_case} --bpecode ${bpemodel}.model --lang "pt" \
             data/${x} ${dict} > ${feat_trans_dir}/data_${bpemode}${nbpe}.${src_case}_${tgt_case}.json
     done
 
@@ -276,8 +247,8 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
             --result-label ${expdir}/${decode_dir}/data.JOB.json \
             --model ${expdir}/results/${trans_model}
 
-        score_bleu.sh --case ${tgt_case} --bpe ${nbpe} --bpemodel ${bpemodel}.model \
-            ${expdir}/${decode_dir} pt ${dict}
+        score_bleu.sh --case ${tgt_case} --bpemodel ${bpemodel}.model \
+            ${expdir}/${decode_dir} "pt" ${dict}
     ) &
     pids+=($!) # store background pids
     done
