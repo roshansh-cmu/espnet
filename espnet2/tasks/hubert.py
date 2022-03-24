@@ -8,6 +8,7 @@
 import argparse
 import logging
 from typing import Callable
+from typing import Union
 from typing import Collection
 from typing import Dict
 from typing import List
@@ -20,6 +21,7 @@ from typeguard import check_argument_types
 from typeguard import check_return_type
 
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
+from espnet2.asr.encoder.avhubert_encoder import FairseqAVHubertPretrainEncoder
 from espnet2.asr.encoder.hubert_encoder import (
     FairseqHubertPretrainEncoder,  # noqa: H301
 )
@@ -31,6 +33,7 @@ from espnet2.asr.preencoder.sinc import LightweightSincConvs
 from espnet2.asr.specaug.abs_specaug import AbsSpecAug
 from espnet2.asr.specaug.specaug import SpecAug
 from espnet2.hubert.espnet_model import HubertPretrainModel
+from espnet2.hubert.espnet_model import AVHubertPretrainModel
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
@@ -63,19 +66,14 @@ specaug_choices = ClassChoices(
 )
 normalize_choices = ClassChoices(
     "normalize",
-    classes=dict(
-        global_mvn=GlobalMVN,
-        utterance_mvn=UtteranceMVN,
-    ),
+    classes=dict(global_mvn=GlobalMVN, utterance_mvn=UtteranceMVN,),
     type_check=AbsNormalize,
     default="utterance_mvn",
     optional=True,
 )
 preencoder_choices = ClassChoices(
     name="preencoder",
-    classes=dict(
-        sinc=LightweightSincConvs,
-    ),
+    classes=dict(sinc=LightweightSincConvs,),
     type_check=AbsPreEncoder,
     default=None,
     optional=True,
@@ -84,6 +82,7 @@ encoder_choices = ClassChoices(
     "encoder",
     classes=dict(
         hubert_pretrain=FairseqHubertPretrainEncoder,
+        avhubert_pretrain=FairseqAVHubertPretrainEncoder,
     ),
     type_check=AbsEncoder,
     default="hubert_pretrain",
@@ -146,6 +145,12 @@ class HubertTask(AbsTask):
             type=int_or_none,
             default=None,
             help="The number of input dimension of the feature",
+        )
+        group.add_argument(
+            "--video",
+            type=str2bool,
+            default=False,
+            help="Use AVHubert instead of Hubert",
         )
 
         group.add_argument(
@@ -325,7 +330,9 @@ class HubertTask(AbsTask):
         return retval
 
     @classmethod
-    def build_model(cls, args: argparse.Namespace) -> HubertPretrainModel:
+    def build_model(
+        cls, args: argparse.Namespace
+    ) -> Union[HubertPretrainModel, AVHubertPretrainModel]:
         assert check_argument_types()
         if isinstance(args.token_list, str):
             with open(args.token_list, encoding="utf-8") as f:
@@ -385,16 +392,28 @@ class HubertTask(AbsTask):
         )
 
         # 8. Build model
-        model = HubertPretrainModel(
-            vocab_size=vocab_size,
-            frontend=frontend,
-            specaug=specaug,
-            normalize=normalize,
-            preencoder=preencoder,
-            encoder=encoder,
-            token_list=token_list,
-            **args.model_conf,
-        )
+        if args.video:
+            model = AVHubertPretrainModel(
+                vocab_size=vocab_size,
+                frontend=frontend,
+                specaug=specaug,
+                normalize=normalize,
+                preencoder=preencoder,
+                encoder=encoder,
+                token_list=token_list,
+                **args.model_conf,
+            )
+        else:
+            model = HubertPretrainModel(
+                vocab_size=vocab_size,
+                frontend=frontend,
+                specaug=specaug,
+                normalize=normalize,
+                preencoder=preencoder,
+                encoder=encoder,
+                token_list=token_list,
+                **args.model_conf,
+            )
 
         # 9. Initialize
         if args.init is not None:

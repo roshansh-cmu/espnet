@@ -125,7 +125,7 @@ class FairseqAVHubertEncoder(AbsEncoder):
             with config_file.open("r", encoding="utf-8") as f:
                 self.pretrained_cfg = yaml.safe_load(f)
 
-            model = AVHubertPretrainEncoder(
+            model = FairseqAVHubertPretrainEncoder(
                 input_size=self.pretrained_cfg["input_size"],
                 hubert_dict=self.pretrained_cfg["hubert_dict"],
                 **self.pretrained_cfg["encoder_conf"],
@@ -270,11 +270,11 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         checkpoint_activations: bool = False,
         sample_rate: int = 16000,
         use_amp: bool = False,
-        video_input_size: int = -1,
-        video_frontend: str = "resnet",
-        fuse_dimension: int = 1,
+        video_input_size: int = 2048,
+        video_frontend: str = "linear",
+        fuse_dimension: int = -1,
         convert_attention: bool = False,
-        attention_type: str = "cos",
+        attention_type: str = "mha",
         attention_windows: list = None,
         attention_dilation: list = None,
         attention_mode: str = "tvm",
@@ -289,7 +289,7 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
             from fairseq.data.dictionary import Dictionary
             from espnet2.avhubert.hubert import (
                 AVHubertConfig,
-                AvHubertModel,
+                AVHubertModel,
                 AVHubertPretrainingConfig,
             )
         except Exception as e:
@@ -307,6 +307,9 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
             "attention_dropout": attention_dropout_rate,
             "label_rate": label_rate,
             "checkpoint_activations": checkpoint_activations,
+            "video_extractor": video_frontend,
+            "video_feat_dim": video_input_size,
+            "fuse_dimension": fuse_dimension,
         }
         cfg_overides = {**cfg_overides, **kwargs}
         self.cfg = AVHubertConfig()
@@ -319,6 +322,7 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         hubert_task_cfg_overides = {
             "label_rate": label_rate,
             "sample_rate": sample_rate,
+            "fine_tuning": True if pretrained_model_path is not None else False,
         }
         for key, value in hubert_task_cfg_overides.items():
             if hasattr(hubert_task_cfg, key):
@@ -327,37 +331,56 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         d = Dictionary()
         self._build_dictionary(d, hubert_dict)
 
-        self.encoder = AvHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
-        if convert_longformer:
-            import longformer
-            from longformer.longformer import LongformerConfig
+        if pretrained_model_path:
+            import fairseq
 
-            config = LongformerConfig(
-                attention_window=attention_windows,
-                attention_dilation=attention_dilation,
-                autoregressive=False,
-                num_attention_heads=attention_heads,
-                hidden_size=output_size,
-                attention_probs_dropout_prob=dropout_rate,
-                attention_mode=attention_mode,
+            (
+                models,
+                self.pretrained_cfg,
+                task,
+            ) = fairseq.checkpoint_utils.load_model_ensemble_and_task(
+                [pretrained_model_path], strict=False,
             )
-            for i, layer in enumerate(self.encoder.encoder.layers):
-                longformer_self_attn = LongformerSelfAttention(config, layer_id=i)
-                longformer_self_attn.query = layer.attention.self.query
-                longformer_self_attn.key = layer.attention.self.key
-                longformer_self_attn.value = layer.attention.self.value
+            model = models[0]
+            print(model)
+            self.encoder = models[0]
+        else:
+            self.encoder = AVHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
+            # for name, parameter in self.encoder.named_parameters():
+            #    print(name, name in model.state_dict())
+            # exit(0)
 
-                longformer_self_attn.query_global = copy.deepcopy(
-                    layer.attention.self.query
-                )
-                longformer_self_attn.key_global = copy.deepcopy(
-                    layer.attention.self.key
-                )
-                longformer_self_attn.value_global = copy.deepcopy(
-                    layer.attention.self.value
-                )
+        # if convert_longformer:
+        #     import longformer
+        #     from longformer.longformer import LongformerConfig
 
-                layer.attention.self = longformer_self_attn
+        #     config = LongformerConfig(
+        #         attention_window=attention_windows,
+        #         attention_dilation=attention_dilation,
+        #         autoregressive=False,
+        #         num_attention_heads=attention_heads,
+        #         hidden_size=output_size,
+        #         attention_probs_dropout_prob=dropout_rate,
+        #         attention_mode=attention_mode,
+        #     )
+        #     for i, layer in enumerate(self.encoder.encoder.layers):
+        #         longformer_self_attn = LongformerSelfAttention(config, layer_id=i)
+        #         longformer_self_attn.query = layer.attention.self.query
+        #         longformer_self_attn.key = layer.attention.self.key
+        #         longformer_self_attn.value = layer.attention.self.value
+
+        #         longformer_self_attn.query_global = copy.deepcopy(
+        #             layer.attention.self.query
+        #         )
+        #         longformer_self_attn.key_global = copy.deepcopy(
+        #             layer.attention.self.key
+        #         )
+        #         longformer_self_attn.value_global = copy.deepcopy(
+        #             layer.attention.self.value
+        #         )
+
+        #         layer.attention.self = longformer_self_attn
+        # self.encoder = AVHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
 
     def _build_dictionary(self, dictionary, hubert_dict_path):
         if os.path.exists(f"{hubert_dict_path}"):
@@ -379,6 +402,8 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         ilens: torch.Tensor,
         ys_pad: torch.Tensor,
         ys_pad_length: torch.Tensor,
+        video: torch.Tensor,
+        video_length: torch.Tensor,
         prev_states: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Forward Hubert Pretrain Encoder.
@@ -392,10 +417,14 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         """
         self.cast_mask_emb()
         masks = make_pad_mask(ilens).to(xs_pad.device)
-        ys_pad = ys_pad[:, : min(ys_pad_length)]
+        vid_masks = make_pad_mask(video_length).to(video.device)
+
+        #ys_pad = ys_pad[:, : min(ys_pad_length)]
+        source = {"audio":xs_pad.unsqueeze(-1),"video":video}
+        #padding_masks = {"audio":masks,"video":vid_masks}
         enc_outputs = self.encoder(
-            xs_pad,
-            padding_mask=masks,
+            source,
+            padding_mask=[masks,vid_masks],
             mask=True,
             target_list=[ys_pad],
             features_only=False,

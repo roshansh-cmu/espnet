@@ -976,8 +976,10 @@ if ! "${skip_train}"; then
                 --cleaner "${cleaner}" \
                 --g2p "${g2p}" \
                 --train_data_path_and_name_and_type "${_asr_train_dir}/${_scp},speech,${_type}" \
+                --train_data_path_and_name_and_type "${_asr_train_dir}/vad.scp,video,npy_scp" \
                 --train_data_path_and_name_and_type "${_asr_train_dir}/text,text,text" \
                 --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
+                --valid_data_path_and_name_and_type "${_asr_valid_dir}/vad.scp,video,npy_scp" \
                 --valid_data_path_and_name_and_type "${_asr_valid_dir}/text,text,text" \
                 --train_shape_file "${_logdir}/train.JOB.scp" \
                 --valid_shape_file "${_logdir}/valid.JOB.scp" \
@@ -1061,15 +1063,19 @@ if ! "${skip_train}"; then
             fi
 
             _opts+="--train_data_path_and_name_and_type ${_split_dir}/${_scp},speech,${_type} "
+            _opts+="--train_data_path_and_name_and_type ${_split_dir}/vad.scp,video,npy_scp "
             _opts+="--train_data_path_and_name_and_type ${_split_dir}/text,text,text "
             _opts+="--train_shape_file ${_split_dir}/speech_shape "
+            _opts+="--train_shape_file ${_split_dir}/video_shape "
             _opts+="--train_shape_file ${_split_dir}/text_shape.${token_type} "
             _opts+="--multiple_iterator true "
 
         else
             _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${_scp},speech,${_type} "
+            _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/vad.scp,video,npy_scp "
             _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text,text,text "
             _opts+="--train_shape_file ${asr_stats_dir}/train/speech_shape "
+            _opts+="--train_shape_file ${asr_stats_dir}/train/video_shape "
             _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${token_type} "
         fi
 
@@ -1102,8 +1108,10 @@ if ! "${skip_train}"; then
                 --cleaner "${cleaner}" \
                 --g2p "${g2p}" \
                 --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
+                --valid_data_path_and_name_and_type "${_asr_valid_dir}/vad.scp,video,npy_scp" \
                 --valid_data_path_and_name_and_type "${_asr_valid_dir}/text,text,text" \
                 --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
+                --valid_shape_file "${asr_stats_dir}/valid/video_shape" \
                 --valid_shape_file "${asr_stats_dir}/valid/text_shape.${token_type}" \
                 --resume true \
                 --init_param ${pretrained_model} \

@@ -80,8 +80,7 @@ class ConformerEncoder(AbsEncoder):
 
     """
 
-    def __init__(
-        self,
+    def __init__(self,
         input_size: int,
         output_size: int = 256,
         attention_heads: int = 4,
@@ -107,7 +106,7 @@ class ConformerEncoder(AbsEncoder):
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
         stochastic_depth_rate: Union[float, List[float]] = 0.0,
-        video_fusion_type: "concat",
+        video_fusion_type: str= "concat",
     ):
         assert check_argument_types()
         super().__init__()
@@ -329,10 +328,10 @@ class ConformerEncoder(AbsEncoder):
             xs_pad, masks = self.embed(xs_pad, masks)
         else:
             xs_pad = self.embed(xs_pad)
-        if video:
-            video_mask = (~make_pad_mask(video_lengths)[:, None, :]).to(video.device)
-            xs_pad = torch.cat((xs_pad,video),dim=1)
-            masks = 
+        #if video:
+        #    video_mask = (~make_pad_mask(video_lengths)[:, None, :]).to(video.device)
+        #    xs_pad = torch.cat((xs_pad,video),dim=1)
+        #    masks = 
 
         intermediate_outs = []
         if len(self.interctc_layer_idx) == 0:

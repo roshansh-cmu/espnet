@@ -195,7 +195,7 @@ class HubertPretrainModel(AbsESPnetModel):
 
         # for data-parallel
         speech = speech[:, : speech_lengths.max()]
-
+        print(self.frontend)
         if self.frontend is not None:
             # Frontend
             #  e.g. STFT and Feature extract
@@ -205,6 +205,7 @@ class HubertPretrainModel(AbsESPnetModel):
         else:
             # No frontend and no feature extract
             feats, feats_lengths = speech, speech_lengths
+        print(feats.shape, feats_lengths.shape)
         return feats, feats_lengths
 
     def compute_correct(
@@ -342,7 +343,7 @@ class AVHubertPretrainModel(AbsESPnetModel):
             == text_lengths.shape[0]
         ), (speech.shape, speech_lengths.shape, text.shape, text_lengths.shape)
         batch_size = speech.shape[0]
-        if video:
+        if video is not None:
             assert (
                 speech.shape[0]
                 == speech_lengths.shape[0]
@@ -374,6 +375,8 @@ class AVHubertPretrainModel(AbsESPnetModel):
         speech_lengths: torch.Tensor,
         text: torch.Tensor,
         text_lengths: torch.Tensor,
+        video: torch.tensor,
+        video_lengths: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         feats, feats_lengths = self._extract_feats(speech, speech_lengths)
         return {"feats": feats, "feats_lengths": feats_lengths}
@@ -408,8 +411,12 @@ class AVHubertPretrainModel(AbsESPnetModel):
                 feats, feats_lengths = self.normalize(feats, feats_lengths)
 
             # 4. Extract Video feats
-            if video is not None and video_lengths is not None:
-                video_feats = self.video_frontend(video)
+            # if (
+            #     video is not None
+            #     and video_lengths is not None
+            #     and self.video_frontend is not None
+            # ):
+            #     video_feats = self.video_frontend(video)
 
         # Pre-encoder, e.g. used for raw input data
         if self.preencoder is not None:

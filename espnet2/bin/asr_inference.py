@@ -421,6 +421,7 @@ def inference(
 
             # N-best list of (text, token, token_int, hyp_object)
             try:
+                logging.info(f"KEYS {keys}")
                 results = speech2text(**batch)
             except TooShortUttError as e:
                 logging.warning(f"Utterance {keys} {e}")

@@ -23,12 +23,9 @@ import torchaudio
 import tqdm
 
 from sklearn.cluster import MiniBatchKMeans
-import fairseq
-
-from espnet2.asr.encoder.hubert_encoder import FairseqHubertEncoder
-
 from feature_loader import MfccFeatureReader
 from feature_loader import HubertFeatureReader
+from feature_loader import ExtractedFeatureReader
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -54,6 +51,7 @@ def get_parser():
     parser.add_argument(
         "--portion", type=float, default=1.0, help="Using a subset of the data."
     )
+    parser.add_argument("--feature_path", default=None, type=str)
 
     group = parser.add_argument_group(description="K-means model.")
     group.add_argument("--km-path", type=str, help="path for k-means model.")
@@ -116,6 +114,20 @@ def get_hubert_feature(feats_dir, fs, portion, url, dir, layer):
     return np.vstack(feats)
 
 
+def get_extracted_feature(feats_path, nj, portion):
+
+    reader = ExtractedFeatureReader(mode="npy")
+    generator, num = get_path_iterator(f"{feats_path}", portion)
+    iterator = generator()
+    feats = []
+    for utt_id, path in tqdm.tqdm(iterator, total=num):
+        feat = reader.get_feats(path)
+        feats.append(feat)
+    # np.random.shuffle(feat)
+    logger.info("Getting HuBERT feature successfully")
+    return np.vstack(feats)
+
+
 def load_feature(
     feats_dir,
     fs,
@@ -124,6 +136,7 @@ def load_feature(
     feature_type,
     hubert_model_url,
     hubert_model_path,
+    feats_path=None,
 ):
     # generate mfcc feature
     if feature_type == "mfcc":
@@ -133,6 +146,8 @@ def load_feature(
         feat = get_hubert_feature(
             feats_dir, fs, portion, hubert_model_url, hubert_model_path, hlayer
         )
+    elif feature_type == "extracted":
+        feat = get_extracted_feature(feats_path, nj, portion)
     else:
         raise ValueError(f"feature_type: {feature_type}")
     return feat
@@ -204,6 +219,7 @@ def main(args):
         feature_type=args.feature_type.lower(),
         hubert_model_path=args.hubert_model_path,
         hubert_model_url=args.hubert_model_url,
+        feats_path=args.feature_path,
     )
     print("Learning kmeans")
     learn_kmeans(
