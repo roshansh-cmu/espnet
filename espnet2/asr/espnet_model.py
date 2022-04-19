@@ -162,6 +162,7 @@ class ESPnetASRModel(AbsESPnetModel):
         text_lengths: torch.Tensor,
         video: torch.Tensor = None,
         video_lengths: torch.Tensor = None,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
 
@@ -170,6 +171,7 @@ class ESPnetASRModel(AbsESPnetModel):
             speech_lengths: (Batch, )
             text: (Batch, Length)
             text_lengths: (Batch,)
+            kwargs: "utt_id" is among the input.
         """
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
@@ -288,6 +290,7 @@ class ESPnetASRModel(AbsESPnetModel):
         text_lengths: torch.Tensor,
         video: torch.Tensor = None,
         video_lengths: torch.Tensor = None,
+        **kwargs,
     ) -> Dict[str, torch.Tensor]:
         if self.extract_feats_in_collect_stats:
             feats, feats_lengths = self._extract_feats(speech, speech_lengths)
