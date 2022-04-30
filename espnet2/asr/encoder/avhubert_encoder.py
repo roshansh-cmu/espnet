@@ -22,7 +22,7 @@ from typeguard import check_argument_types
 from typing import Optional
 from typing import Tuple
 
-from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
+from espnet.nets.pytorch_backend.nets_utils import make_pad_mask, pad_list
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 
@@ -257,7 +257,7 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
 
     def __init__(
         self,
-        input_size: int = 1,
+        input_size: int = 104,
         output_size: int = 1024,
         linear_units: int = 1024,
         attention_heads: int = 12,
@@ -310,9 +310,12 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
             "video_extractor": video_frontend,
             "video_feat_dim": video_input_size,
             "fuse_dimension": fuse_dimension,
+            "masking_type": "feature",
+            "audio_feat_dim": input_size,
         }
         cfg_overides = {**cfg_overides, **kwargs}
         self.cfg = AVHubertConfig()
+        orig_cfg = AVHubertConfig()
 
         for key, value in cfg_overides.items():
             if hasattr(self.cfg, key):
@@ -331,6 +334,8 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         d = Dictionary()
         self._build_dictionary(d, hubert_dict)
 
+        self.encoder = AVHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
+
         if pretrained_model_path:
             import fairseq
 
@@ -342,13 +347,31 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
                 [pretrained_model_path], strict=False,
             )
             model = models[0]
-            print(model)
-            self.encoder = models[0]
-        else:
-            self.encoder = AVHubertModel(self.cfg, hubert_task_cfg, self.dictionaries)
-            # for name, parameter in self.encoder.named_parameters():
-            #    print(name, name in model.state_dict())
-            # exit(0)
+            keys_pt = ["encoder." + k for k, v in model.named_parameters()]
+            keys_curr = [k for k, v in self.named_parameters()]
+            keys_pt_load = [k for k in keys_curr if k in keys_pt]
+            # print(f"Init from Scratch: {[k for k in keys_curr if k not in keys_pt]}")
+            print(f"Init from PT: {keys_pt_load}")
+            # print(f"Unused: {[k for k in keys_pt if k not in keys_curr]}")
+
+            for name, parameter in self.encoder.named_parameters():
+                dict_name = name  # ".".join(name.split(".")[1:])
+                # print(name, dict_name)
+                if "encoder." + name in keys_pt_load:
+                    # print(
+                    #     f"Name {dict_name} Shape {model.state_dict()[dict_name].shape}"
+                    # )
+                    if (
+                        parameter.dtype == model.state_dict()[dict_name].dtype
+                        and parameter.shape == model.state_dict()[dict_name].shape
+                    ):
+                        parameter = model.state_dict()[dict_name]
+                    else:
+                        print(
+                            f"Name:{name}, {parameter.dtype==model.state_dict()[dict_name].dtype} {parameter.shape==model.state_dict()[dict_name].shape}"
+                        )
+            #    else:
+            #        print(name, name in model.state_dict())
 
         # if convert_longformer:
         #     import longformer
@@ -417,14 +440,18 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
         """
         self.cast_mask_emb()
         masks = make_pad_mask(ilens).to(xs_pad.device)
-        vid_masks = make_pad_mask(video_length).to(video.device)
-
-        #ys_pad = ys_pad[:, : min(ys_pad_length)]
-        source = {"audio":xs_pad.unsqueeze(-1),"video":video}
-        #padding_masks = {"audio":masks,"video":vid_masks}
+        vid_mask = make_pad_mask(video_length).to(video.device)
+        vid_unmask = [x[: video_length[i], :] for i, x in enumerate(video)]
+        video = pad_list(vid_unmask, pad_value=0.0)
+        # logging.info(
+        #     f"INP Forward AUDIO {masks.shape} AUDIO {xs_pad.shape} VID {vid_mask.shape} VID {video.shape} {max(video_length)} "
+        # )
+        # ys_pad = ys_pad[:, : min(ys_pad_length)]
+        source = {"audio": xs_pad, "video": video}
+        # padding_masks = {"audio":masks,"video":vid_masks}
         enc_outputs = self.encoder(
             source,
-            padding_mask=[masks,vid_masks],
+            padding_mask=[masks, vid_mask],
             mask=True,
             target_list=[ys_pad],
             features_only=False,

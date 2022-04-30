@@ -326,6 +326,7 @@ class AVHubertPretrainModel(AbsESPnetModel):
         text_lengths: torch.Tensor,
         video: torch.Tensor = None,
         video_lengths: torch.Tensor = None,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Calc loss
 

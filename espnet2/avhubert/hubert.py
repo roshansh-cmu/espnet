@@ -90,20 +90,16 @@ class AVHubertConfig(FairseqDataclass):
 
     # dropouts
     dropout: float = field(
-        default=0.1,
-        metadata={"help": "dropout probability for the transformer"},
+        default=0.1, metadata={"help": "dropout probability for the transformer"},
     )
     attention_dropout: float = field(
-        default=0.1,
-        metadata={"help": "dropout probability for attention weights"},
+        default=0.1, metadata={"help": "dropout probability for attention weights"},
     )
     activation_dropout: float = field(
-        default=0.0,
-        metadata={"help": "dropout probability after activation in FFN"},
+        default=0.0, metadata={"help": "dropout probability after activation in FFN"},
     )
     encoder_layerdrop: float = field(
-        default=0.0,
-        metadata={"help": "probability of dropping a tarnsformer layer"},
+        default=0.0, metadata={"help": "probability of dropping a tarnsformer layer"},
     )
     dropout_input: float = field(
         default=0.0,
@@ -122,12 +118,10 @@ class AVHubertConfig(FairseqDataclass):
         },
     )
     untie_final_proj: bool = field(
-        default=False,
-        metadata={"help": "use separate projection for each target"},
+        default=False, metadata={"help": "use separate projection for each target"},
     )
     layer_norm_first: bool = field(
-        default=False,
-        metadata={"help": "apply layernorm first in the transformer"},
+        default=False, metadata={"help": "apply layernorm first in the transformer"},
     )
     conv_feature_layers: str = field(
         default="[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2",
@@ -147,20 +141,17 @@ class AVHubertConfig(FairseqDataclass):
         default=False, metadata={"help": "adds projection + glu to targets"}
     )
     feature_grad_mult: float = field(
-        default=1.0,
-        metadata={"help": "multiply feature extractor var grads by this"},
+        default=1.0, metadata={"help": "multiply feature extractor var grads by this"},
     )
 
     # masking
     mask_length_audio: int = field(default=10, metadata={"help": "mask length"})
     mask_prob_audio: float = field(
-        default=0.65,
-        metadata={"help": "probability of replacing a token with mask"},
+        default=0.65, metadata={"help": "probability of replacing a token with mask"},
     )
     mask_length_image: int = field(default=10, metadata={"help": "mask length"})
     mask_prob_image: float = field(
-        default=0.65,
-        metadata={"help": "probability of replacing a token with mask"},
+        default=0.65, metadata={"help": "probability of replacing a token with mask"},
     )
     mask_selection: MASKING_DISTRIBUTION_CHOICES = field(
         default="static", metadata={"help": "how to choose mask length"}
@@ -183,12 +174,10 @@ class AVHubertConfig(FairseqDataclass):
 
     # channel masking
     mask_channel_length: int = field(
-        default=10,
-        metadata={"help": "length of the mask for features (channels)"},
+        default=10, metadata={"help": "length of the mask for features (channels)"},
     )
     mask_channel_prob: float = field(
-        default=0.0,
-        metadata={"help": "probability of replacing a feature with 0"},
+        default=0.0, metadata={"help": "probability of replacing a feature with 0"},
     )
     mask_channel_selection: MASKING_DISTRIBUTION_CHOICES = field(
         default="static",
@@ -203,8 +192,7 @@ class AVHubertConfig(FairseqDataclass):
         },
     )
     no_mask_channel_overlap: bool = field(
-        default=False,
-        metadata={"help": "whether to allow channel masks to overlap"},
+        default=False, metadata={"help": "whether to allow channel masks to overlap"},
     )
     mask_channel_min_space: int = field(
         default=1,
@@ -222,18 +210,15 @@ class AVHubertConfig(FairseqDataclass):
     )
 
     latent_temp: Tuple[float, float, float] = field(
-        default=(2, 0.5, 0.999995),
-        metadata={"help": "legacy (to be removed)"},
+        default=(2, 0.5, 0.999995), metadata={"help": "legacy (to be removed)"},
     )
 
     # loss computation
     skip_masked: bool = field(
-        default=False,
-        metadata={"help": "skip computing losses over masked frames"},
+        default=False, metadata={"help": "skip computing losses over masked frames"},
     )
     skip_nomask: bool = field(
-        default=False,
-        metadata={"help": "skip computing losses over unmasked frames"},
+        default=False, metadata={"help": "skip computing losses over unmasked frames"},
     )
     resnet_relu_type: str = field(
         default="prelu", metadata={"help": "relu type for resnet"}
@@ -255,7 +240,7 @@ class AVHubertConfig(FairseqDataclass):
         default="concat", metadata={"help": "fusing two modalities: add,concat"}
     )
     fuse_dimension: int = field(
-        default=2, metadata={"help": "fusing in time or channel dimension"}
+        default=1, metadata={"help": "fusing in time or channel dimension"}
     )
     video_extractor: str = field(
         default="resnet",
@@ -271,7 +256,7 @@ class AVHubertConfig(FairseqDataclass):
         },
     )
     masking_type: str = field(
-        default="input", metadata={"help": "input or feature masking"}
+        default="feature", metadata={"help": "input or feature masking"}
     )
 
     decoder_embed_dim: int = field(
@@ -292,8 +277,7 @@ class AVHubertConfig(FairseqDataclass):
         metadata={"help": "use learned positional embeddings in the decoder"},
     )
     decoder_normalize_before: bool = field(
-        default=False,
-        metadata={"help": "apply layernorm before each decoder block"},
+        default=False, metadata={"help": "apply layernorm before each decoder block"},
     )
     no_token_positional_embeddings: bool = field(
         default=False,
@@ -320,8 +304,7 @@ class AVHubertConfig(FairseqDataclass):
         default=2048, metadata={"help": "max target positions"}
     )
     share_decoder_input_output_embed: bool = field(
-        default=False,
-        metadata={"help": "share decoder input and output embeddings"},
+        default=False, metadata={"help": "share decoder input and output embeddings"},
     )
     no_scale_embedding: bool = field(default=True, metadata={"help": "scale embedding"})
 
@@ -377,7 +360,9 @@ class AVHubertModel(BaseFairseqModel):
         self.modality_fuse = cfg.modality_fuse
         self.encoder_embed_dim = cfg.encoder_embed_dim
         if self.modality_fuse == "concat":
-            self.embed = cfg.encoder_embed_dim * 2
+            self.embed = cfg.encoder_embed_dim
+            if cfg.fuse_dimension == 1:
+                self.embed *= 2
         elif self.modality_fuse == "add":
             self.embed = cfg.encoder_embed_dim
         self.post_extract_proj = (
@@ -466,7 +451,7 @@ class AVHubertModel(BaseFairseqModel):
         model = AVHubertModel(cfg, task.cfg, task.dictionaries, **kwargs)
         return model
 
-    def apply_input_mask(self, x, padding_mask, target_list,is_audio=False):
+    def apply_input_mask(self, x, padding_mask, target_list, is_audio=False):
         B, T, C = x.shape[:3]
         # is_audio = True if len(x.shape) == 3 else False
         if is_audio:
@@ -528,13 +513,12 @@ class AVHubertModel(BaseFairseqModel):
             logger.info(f"No mask channel prob for input masking")
         return x, mask_indices
 
-    def apply_feature_mask(self, x, padding_mask, target_list):
+    def apply_feature_mask(self, x, padding_mask, target_list, mask_prob, mask_length):
         B, T, C = x.shape
-        #assert (
+        # assert (
         ##    self.mask_prob_audio == self.mask_prob_image
         #    and self.mask_length_audio == self.mask_length_image
-        #), f"masking prob/length for image/audio be same for feature masking"
-        mask_prob, mask_length = self.mask_prob_audio, self.mask_length_image
+        # ), f"masking prob/length for image/audio be same for feature masking"
         if mask_prob > 0:
             mask_indices, _, _, _ = compute_mask_indices(
                 (B, T),
@@ -551,25 +535,6 @@ class AVHubertModel(BaseFairseqModel):
             x[mask_indices] = self.mask_emb
         else:
             mask_indices = None
-
-        if self.mask_channel_prob > 0:
-            mask_channel_indices, _, _, _ = compute_mask_indices(
-                (B, C),
-                None,
-                self.mask_channel_prob,
-                self.mask_channel_length,
-                self.mask_channel_selection,
-                self.mask_channel_other,
-                no_overlap=self.no_mask_channel_overlap,
-                min_space=self.mask_channel_min_space,
-            )
-            mask_channel_indices = (
-                torch.from_numpy(mask_channel_indices)
-                .to(x.device)
-                .unsqueeze(1)
-                .expand(-1, T, -1)
-            )
-            x[mask_channel_indices] = 0
 
         return x, mask_indices
 
@@ -603,9 +568,7 @@ class AVHubertModel(BaseFairseqModel):
         return features, mask_indices, target_list
 
     def forward_padding_mask(
-        self,
-        features: torch.Tensor,
-        padding_mask: torch.Tensor,
+        self, features: torch.Tensor, padding_mask: torch.Tensor,
     ) -> torch.Tensor:
         extra = padding_mask.size(1) % features.size(1)
         if extra > 0:
@@ -624,8 +587,8 @@ class AVHubertModel(BaseFairseqModel):
             nom = (feats_.unsqueeze(dim=1) * emb_mat.unsqueeze(dim=0)).sum(
                 dim=-1
             )  # [B*T, V]
-            denom = (feats_**2).sum(dim=-1).sqrt().unsqueeze(dim=1) * (
-                emb_mat**2
+            denom = (feats_ ** 2).sum(dim=-1).sqrt().unsqueeze(dim=1) * (
+                emb_mat ** 2
             ).sum(dim=-1).sqrt().unsqueeze(
                 dim=0
             )  # [B*T, V]
@@ -637,7 +600,7 @@ class AVHubertModel(BaseFairseqModel):
 
     def forward(
         self,
-        source: Dict[str,torch.Tensor],
+        source: Dict[str, torch.Tensor],
         target_list: Optional[List[torch.Tensor]] = None,
         padding_mask: Optional[List[torch.Tensor]] = None,
         mask: bool = True,
@@ -647,22 +610,24 @@ class AVHubertModel(BaseFairseqModel):
         """output layer is 1-based"""
         # print(source.keys(),[x.shape for _,x in source.items()])
         src_audio, src_video = source["audio"], source["video"]
-        if mask and self.masking_type == "input":
-            src_video, mask_indices_video = self.apply_input_mask(
-                src_video, padding_mask[1], target_list
-            )
-            #mask_indices_video = 
-            src_audio, mask_indices_audio = self.apply_input_mask(
-                src_audio, padding_mask[0], target_list,is_audio=True
-            )
-            mask_indices = torch.logical_or(mask_indices_audio, mask_indices_video)
-        else:
-            src_audio, src_video, mask_indices = src_audio, src_video, None
+        # if mask and self.masking_type == "input":
+        #     src_video, mask_indices_video = self.apply_input_mask(
+        #         src_video, padding_mask[1], target_list
+        #     )
+        #     # mask_indices_video =
+        #     src_audio, mask_indices_audio = self.apply_input_mask(
+        #         src_audio, padding_mask[0], target_list, is_audio=True
+        #     )
+        #     mask_indices = torch.logical_or(mask_indices_audio, mask_indices_video)
+        # else:
+        src_audio, src_video, mask_indices = src_audio, src_video, None
 
         features_audio = self.forward_features(
-            src_audio, modality="audio"
+            src_audio.transpose(1, 2), modality="audio"
         )  # features: [B, F, T]
-        features_video = self.forward_features(src_video, modality="video")
+        features_video = self.forward_features(
+            src_video.transpose(1, 2), modality="video"
+        )
         modality_drop_prob, audio_drop_prob = np.random.random(), np.random.random()
         if self.training:
             if modality_drop_prob < self.modality_dropout:
@@ -671,9 +636,44 @@ class AVHubertModel(BaseFairseqModel):
                 else:
                     features_video = 0 * features_video
         if self.modality_fuse == "concat":
-            features = torch.cat(
-                [features_audio, features_video], dim=self.fuse_dimension
-            )
+
+            ## FEAT_AUDIO [B,F,T], FEAT_VIDEO [B,F,T]
+            if self.fuse_dimension == 1:
+                features = torch.cat(
+                    [features_audio, features_video], dim=self.fuse_dimension
+                )
+            else:
+                ## Concat utterance-wise
+                features_audio = features_audio.transpose(1, 2)
+                features_video = features_video.transpose(1, 2)
+                # logging.info(
+                #     f"Padding Shapes {[x.shape for x in padding_mask]} AUDIO {features_audio.shape} VID {features_video.shape} "
+                # )
+                audio_mask, video_mask = padding_mask
+
+                features = [
+                    torch.cat(
+                        [
+                            features_audio[i][audio_mask[i] == False],
+                            features_video[i][video_mask[i] == False],
+                        ],
+                        dim=0,
+                    )
+                    for i in range(len(features_audio))
+                ]
+                from espnet.nets.pytorch_backend.nets_utils import (
+                    make_pad_mask,
+                    pad_list,
+                )
+
+                ## Redo padding
+                feat_sizes = [len(s) for s in features]
+                features = pad_list(features, pad_value=0.0)
+                padding_mask = make_pad_mask(lengths=feat_sizes, xs=features)
+                # print(f"PAD {padding_mask.shape},FEAT {features.shape}")
+                # padding_mask = padding_mask.transpose(1, 2)
+                features = features.transpose(1, 2)
+
         elif self.modality_fuse == "add":
             features = features_audio + features_video
         if target_list is not None:
@@ -695,7 +695,11 @@ class AVHubertModel(BaseFairseqModel):
         features = self.dropout_input(features)
         if self.masking_type == "feature" and mask:
             x, mask_indices = self.apply_feature_mask(
-                features, padding_mask, target_list
+                features,
+                padding_mask,
+                target_list,
+                self.mask_prob_audio,
+                self.mask_length_audio,
             )
         else:
             x = features
@@ -849,10 +853,19 @@ class AVHubertModel(BaseFairseqModel):
         self.final_proj = None
 
     def get_logits(self, net_output, is_masked=True):
-        raise NotImplementedError
+        if is_masked:
+            logits_list = net_output["logit_m_list"]
+        else:
+            logits_list = net_output["logit_u_list"]
+        logits_list = [x.float() for x in logits_list if x is not None]
+        return logits_list
 
     def get_targets(self, net_output, is_masked=True):
-        raise NotImplementedError
+        logits_list = self.get_logits(net_output, is_masked)
+        targets_list = [x.new_zeros(x.size(0), dtype=torch.long) for x in logits_list]
+        return targets_list
+
+        # raise NotImplementedError
 
     def compute_nce(self, x, pos, negs):
         neg_is_pos = (pos == negs).all(-1)
