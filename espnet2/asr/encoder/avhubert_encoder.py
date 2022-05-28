@@ -51,7 +51,10 @@ class FairseqAVHubertEncoder(AbsEncoder):
         input_size: int,
         avhubert_url: str = "./",
         avhubert_dir_path: str = "./",
+        linear_units: int = 1024,
         output_size: int = 256,
+        attention_heads: int = 12,
+        num_blocks: int = 12,
         normalize_before: bool = False,
         freeze_finetune_updates: int = 0,
         dropout_rate: float = 0.0,
@@ -74,6 +77,7 @@ class FairseqAVHubertEncoder(AbsEncoder):
         convert_attention: bool = False,
         attention_type: str = "cos",
         pretrained_model_path: str = None,
+        **kwargs,
     ):
         assert check_argument_types()
         super().__init__()
@@ -101,11 +105,19 @@ class FairseqAVHubertEncoder(AbsEncoder):
             "encoder_layerdrop": layerdrop,
             "feature_grad_mult": feature_grad_mult,
             "data": avhubert_dir_path,
+            "video_extractor": video_frontend,
+            "video_feat_dim": video_input_size,
+            "fuse_dimension": fuse_dimension,
+            "masking_type": "feature",
+            "audio_feat_dim": input_size,
         }
 
         if avhubert_url == "espnet":
             self.hubert_model_path = avhubert_dir_path
-            s = torch.load(self.hubert_model_path, map_location=torch.device("cpu"),)
+            s = torch.load(
+                self.hubert_model_path,
+                map_location=torch.device("cpu"),
+            )
 
             if all("encoder.encoder" in k for k in s):
                 try:
@@ -118,7 +130,8 @@ class FairseqAVHubertEncoder(AbsEncoder):
                     raise e
 
             config_file = os.path.join(
-                "/".join(self.hubert_model_path.split("/")[:-1]), "config.yaml",
+                "/".join(self.hubert_model_path.split("/")[:-1]),
+                "config.yaml",
             )
             config_file = Path(config_file)
 
@@ -145,7 +158,9 @@ class FairseqAVHubertEncoder(AbsEncoder):
                 self.pretrained_cfg,
                 task,
             ) = fairseq.checkpoint_utils.load_model_ensemble_and_task(
-                [self.hubert_model_path], arg_overrides=arg_overrides, strict=False,
+                [self.hubert_model_path],
+                arg_overrides=arg_overrides,
+                strict=False,
             )
             model = models[0]
 
@@ -171,7 +186,9 @@ class FairseqAVHubertEncoder(AbsEncoder):
             self.after_norm = LayerNorm(output_size)
 
         if output_size and output_size != d:
-            self.output_layer = torch.nn.Sequential(torch.nn.Linear(d, output_size),)
+            self.output_layer = torch.nn.Sequential(
+                torch.nn.Linear(d, output_size),
+            )
         else:
             self.output_layer = None
 
@@ -185,6 +202,8 @@ class FairseqAVHubertEncoder(AbsEncoder):
         self,
         xs_pad: torch.Tensor,
         ilens: torch.Tensor,
+        video: torch.Tensor,
+        video_length: torch.Tensor,
         prev_states: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Forward Hubert ASR Encoder.
@@ -197,6 +216,14 @@ class FairseqAVHubertEncoder(AbsEncoder):
             position embedded tensor and mask
         """
         masks = make_pad_mask(ilens).to(xs_pad.device)
+        vid_mask = make_pad_mask(video_length).to(video.device)
+        vid_unmask = [x[: video_length[i], :] for i, x in enumerate(video)]
+        video = pad_list(vid_unmask, pad_value=0.0)
+        # logging.info(
+        #     f"INP Forward AUDIO {masks.shape} AUDIO {xs_pad.shape} VID {vid_mask.shape} VID {video.shape} {max(video_length)} "
+        # )
+        # ys_pad = ys_pad[:, : min(ys_pad_length)]
+        source = {"audio": xs_pad, "video": video}
 
         ft = self.freeze_finetune_updates <= self.num_updates
 
@@ -209,12 +236,12 @@ class FairseqAVHubertEncoder(AbsEncoder):
             self.num_updates += 1
         with torch.no_grad() if not ft else contextlib.nullcontext():
             enc_outputs = self.encoders(
-                xs_pad,
-                padding_mask=masks,
+                source,
+                padding_mask=[masks, vid_mask],
                 mask=self.apply_mask and self.training,
                 features_only=True,
                 output_layer=None,
-            )
+        )
 
         xs_pad = enc_outputs["x"]  # (B,T,C),
         masks = enc_outputs["padding_mask"]  # (B, T)
@@ -344,7 +371,8 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
                 self.pretrained_cfg,
                 task,
             ) = fairseq.checkpoint_utils.load_model_ensemble_and_task(
-                [pretrained_model_path], strict=False,
+                [pretrained_model_path],
+                strict=False,
             )
             model = models[0]
             keys_pt = ["encoder." + k for k, v in model.named_parameters()]
@@ -368,10 +396,10 @@ class FairseqAVHubertPretrainEncoder(AbsEncoder):
                         parameter = model.state_dict()[dict_name]
                     else:
                         print(
-                            f"Name:{name}, {parameter.dtype==model.state_dict()[dict_name].dtype} {parameter.shape==model.state_dict()[dict_name].shape}"
+                            f"Skipped Name:{name}, {parameter.dtype==model.state_dict()[dict_name].dtype} {parameter.shape==model.state_dict()[dict_name].shape}"
                         )
-            #    else:
-            #        print(name, name in model.state_dict())
+        else:
+               print(name, name in model.state_dict())
 
         # if convert_longformer:
         #     import longformer
