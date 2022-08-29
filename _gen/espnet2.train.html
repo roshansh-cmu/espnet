@@ -133,6 +133,7 @@
 <li class="toctree-l1"><a class="reference internal" href="espnet2.st.html">espnet2.st package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="espnet2.tasks.html">espnet2.tasks package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="espnet2.mt.html">espnet2.mt package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="espnet2.asr_transducer.html">espnet2.asr_transducer package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="espnet2.bin.html">espnet2.bin package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="espnet2.samplers.html">espnet2.samplers package</a></li>
 </ul>
@@ -582,6 +583,12 @@ discrimiantor loss. This must have the default value.</p>
 <dl class="class">
 <dt id="espnet2.train.preprocessor.CommonPreprocessor_multi">
 <em class="property">class </em><code class="sig-prename descclassname">espnet2.train.preprocessor.</code><code class="sig-name descname">CommonPreprocessor_multi</code><span class="sig-paren">(</span><em class="sig-param">train: bool, token_type: str = None, token_list: Union[pathlib.Path, str, Iterable[str]] = None, bpemodel: Union[pathlib.Path, str, Iterable[str]] = None, text_cleaner: Collection[str] = None, g2p_type: str = None, unk_symbol: str = '&lt;unk&gt;', space_symbol: str = '&lt;space&gt;', non_linguistic_symbols: Union[pathlib.Path, str, Iterable[str]] = None, delimiter: str = None, speech_name: str = 'speech', text_name: List[str] = ['text']</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/train/preprocessor.html#CommonPreprocessor_multi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.preprocessor.CommonPreprocessor_multi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#espnet2.train.preprocessor.AbsPreprocessor" title="espnet2.train.preprocessor.AbsPreprocessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.preprocessor.AbsPreprocessor</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="espnet2.train.preprocessor.DynamicMixingPreprocessor">
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.train.preprocessor.</code><code class="sig-name descname">DynamicMixingPreprocessor</code><span class="sig-paren">(</span><em class="sig-param">train: bool</em>, <em class="sig-param">source_scp: str = None</em>, <em class="sig-param">num_spk: int = 2</em>, <em class="sig-param">dynamic_mixing_gain_db: float = 0.0</em>, <em class="sig-param">speech_name: str = 'speech_mix'</em>, <em class="sig-param">speech_ref_name_prefix: str = 'speech_ref'</em>, <em class="sig-param">utt2spk: str = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/train/preprocessor.html#DynamicMixingPreprocessor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.preprocessor.DynamicMixingPreprocessor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#espnet2.train.preprocessor.AbsPreprocessor" title="espnet2.train.preprocessor.AbsPreprocessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.preprocessor.AbsPreprocessor</span></code></a></p>
 </dd></dl>
 

@@ -116,6 +116,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.st.html">espnet2.st package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.tasks.html">espnet2.tasks package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.mt.html">espnet2.mt package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.asr_transducer.html">espnet2.asr_transducer package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.bin.html">espnet2.bin package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.samplers.html">espnet2.samplers package</a></li>
 </ul>
@@ -238,6 +239,7 @@
 <span class="sd">                            espnet2/iterators/chunk_iter_factory.py</span>
 <span class="sd">            kwargs: &quot;utt_id&quot; is among the input.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="c1"># clean speech signal of each speaker</span>
         <span class="n">speech_ref</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;speech_ref</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">spk</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="k">for</span> <span class="n">spk</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_spk</span><span class="p">)</span>
