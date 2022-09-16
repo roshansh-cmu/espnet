@@ -228,7 +228,9 @@ class Speech2Text:
 
     @torch.no_grad()
     def __call__(
-        self, speech: Union[torch.Tensor, np.ndarray]
+        self,
+        speech: Union[torch.Tensor, np.ndarray],
+        video: Union[torch.Tensor, np.ndarray] = None,
     ) -> List[
         Tuple[
             Optional[str],
@@ -251,11 +253,27 @@ class Speech2Text:
         if isinstance(speech, np.ndarray):
             speech = torch.tensor(speech)
 
+        if video is not None:
+            if isinstance(video, np.ndarray):
+                video = torch.tensor(video)
+            video = video.unsqueeze(0).to(getattr(torch, self.dtype))
+            video_lengths = video.new_full(
+                [1], dtype=torch.long, fill_value=video.size(1)
+            )
+        else:
+            video = None
+            video_lengths = None
         # data: (Nsamples,) -> (1, Nsamples)
         speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
+
         # lengths: (1,)
         lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
-        batch = {"speech": speech, "speech_lengths": lengths}
+        batch = {
+            "speech": speech,
+            "speech_lengths": lengths,
+            "video": video,
+            "video_lengths": video_lengths,
+        }
 
         # a. To device
         batch = to_device(batch, device=self.device)

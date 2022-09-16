@@ -10,6 +10,7 @@ import torch
 from torch import nn
 
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
+from espnet2.asr.decoder.hierarchical_attention import HierarchicalAttention
 
 
 class DecoderLayer(nn.Module):
@@ -43,6 +44,9 @@ class DecoderLayer(nn.Module):
         dropout_rate,
         normalize_before=True,
         concat_after=False,
+        video_attn=None,
+        use_video_hier_attn=False,
+        video_hierarchical_feed_factor=0.0,
     ):
         """Construct an DecoderLayer object."""
         super(DecoderLayer, self).__init__()
@@ -59,8 +63,26 @@ class DecoderLayer(nn.Module):
         if self.concat_after:
             self.concat_linear1 = nn.Linear(size + size, size)
             self.concat_linear2 = nn.Linear(size + size, size)
+        self.use_video_hier_attn = use_video_hier_attn
+        if use_video_hier_attn:
+            self.video_attn = video_attn
+            self.hier_attn = HierarchicalAttention(
+                ctx_dims=[size, size],
+                hid_dim=size,
+                mid_dim=size,
+                att_feed_factor=video_hierarchical_feed_factor,
+            )
 
-    def forward(self, tgt, tgt_mask, memory, memory_mask, cache=None):
+    def forward(
+        self,
+        tgt,
+        tgt_mask,
+        memory,
+        memory_mask,
+        cache=None,
+        video=None,
+        video_mask=None,
+    ):
         """Compute decoded features.
 
         Args:
@@ -111,13 +133,17 @@ class DecoderLayer(nn.Module):
         residual = x
         if self.normalize_before:
             x = self.norm2(x)
+        if video is not None and self.use_video_hier_attn:
+            speech_ctx = self.src_attn(x, memory, memory, memory_mask)
+            video_ctx = self.video_attn(x, video, video, video_mask)
+            hier_attn = self.hier_attn([speech_ctx, video_ctx], hid=x)
+        else:
+            hier_attn = self.src_attn(x, memory, memory, memory_mask)
         if self.concat_after:
-            x_concat = torch.cat(
-                (x, self.src_attn(x, memory, memory, memory_mask)), dim=-1
-            )
+            x_concat = torch.cat((x, hier_attn), dim=-1)
             x = residual + self.concat_linear2(x_concat)
         else:
-            x = residual + self.dropout(self.src_attn(x, memory, memory, memory_mask))
+            x = residual + self.dropout(hier_attn)
         if not self.normalize_before:
             x = self.norm2(x)
 
@@ -131,4 +157,4 @@ class DecoderLayer(nn.Module):
         if cache is not None:
             x = torch.cat([cache, x], dim=1)
 
-        return x, tgt_mask, memory, memory_mask
+        return x, tgt_mask, memory, memory_mask, None, video, video_mask

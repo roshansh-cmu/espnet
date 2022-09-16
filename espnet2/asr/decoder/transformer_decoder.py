@@ -2,15 +2,14 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Decoder definition."""
-from typing import Any
-from typing import List
-from typing import Sequence
-from typing import Tuple
+from typing import Any, List, Sequence, Tuple
 
+import numpy as np
 import torch
 from typeguard import check_argument_types
 
-from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
+from espnet2.asr.decoder.abs_decoder import AbsDecoder
+from espnet.nets.pytorch_backend.nets_utils import make_pad_mask, pad_list
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from espnet.nets.pytorch_backend.transformer.decoder_layer import DecoderLayer
 from espnet.nets.pytorch_backend.transformer.dynamic_conv import DynamicConvolution
@@ -21,11 +20,10 @@ from espnet.nets.pytorch_backend.transformer.lightconv import LightweightConvolu
 from espnet.nets.pytorch_backend.transformer.lightconv2d import LightweightConvolution2D
 from espnet.nets.pytorch_backend.transformer.mask import subsequent_mask
 from espnet.nets.pytorch_backend.transformer.positionwise_feed_forward import (
-    PositionwiseFeedForward,  # noqa: H301
-)
+    PositionwiseFeedForward,
+)  # noqa: H301
 from espnet.nets.pytorch_backend.transformer.repeat import repeat
 from espnet.nets.scorer_interface import BatchScorerInterface
-from espnet2.asr.decoder.abs_decoder import AbsDecoder
 
 
 class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
@@ -60,6 +58,13 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         use_output_layer: bool = True,
         pos_enc_class=PositionalEncoding,
         normalize_before: bool = True,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
+        video_vat=False,
+        video_hierarchical_attn=False,
+        video_hierarchical_feed_factor: float = 0.0,
     ):
         assert check_argument_types()
         super().__init__()
@@ -91,6 +96,18 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
 
         # Must set by the inheritance
         self.decoders = None
+        # Video Use
+        self.use_video = use_video
+        if use_video:
+            self.video_projection = torch.nn.Linear(video_dim, attention_dim)
+            if video_upsample:
+                self.fusion_projection = torch.nn.Linear(
+                    attention_dim * 2, attention_dim
+                )
+        self.video_first = video_first
+        self.video_upsample = video_upsample
+        self.video_vat = video_vat
+        self.video_hierachical_attn = video_hierarchical_attn
 
     def forward(
         self,
@@ -98,6 +115,8 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         hlens: torch.Tensor,
         ys_in_pad: torch.Tensor,
         ys_in_lens: torch.Tensor,
+        video: torch.Tensor = None,
+        video_lens: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward decoder.
 
@@ -136,8 +155,66 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
             )
 
         x = self.embed(tgt)
-        x, tgt_mask, memory, memory_mask = self.decoders(
-            x, tgt_mask, memory, memory_mask
+        if self.use_video:
+            video = self.video_projection(video)
+            if not self.video_hierachical_attn:
+                if not self.video_upsample:
+                    video_mask = (~make_pad_mask(video_lens, maxlen=video.size(1)))[
+                        :, None, :
+                    ].to(video.device)
+                    new_memory = []
+                    for i, m in enumerate(memory):
+                        if not self.video_first:
+                            new_memory.append(
+                                torch.cat(
+                                    [m[: hlens[i], ::], video[i][: video_lens[i], ::]],
+                                    dim=0,
+                                )
+                            )
+                        else:
+                            new_memory.append(
+                                torch.cat(
+                                    [video[i][: video_lens[i], ::], m[: hlens[i], ::]],
+                                    dim=0,
+                                )
+                            )
+                    memory = pad_list(new_memory, 0)
+                    memory_mask = (
+                        ~make_pad_mask(hlens + video_lens, maxlen=memory.size(1))
+                    )[:, None, :].to(memory.device)
+                else:
+                    upsample_factor = int(
+                        np.ceil(float(memory.size(1)) / video.size(1))
+                    )
+                    if upsample_factor > 1:
+                        video = torch.repeat_interleave(
+                            video, repeats=upsample_factor, dim=1
+                        )
+                    elif upsample_factor < 1:
+                        factor = int(np.ceil(float(video.size(1) / memory.size(1))))
+                        video = video[:, 0 : video.shape[1] : factor, :]
+                    if video.shape[1] < memory.shape[1]:
+                        padlen = memory.shape[1] - video.shape[1]
+                        video = torch.cat((video, video[:, -padlen:, :]), dim=1)
+                    elif video.shape[1] > memory.shape[1]:
+                        video = video[:, : memory.shape[1], :]
+                    concat_feat = torch.cat([memory, video], dim=-1)
+                    memory = self.fusion_projection(concat_feat)
+
+        if self.use_video:
+            if not self.video_hierachical_attn:
+                video = None
+                video_mask = None
+            else:
+                video = video
+                video_mask = (~make_pad_mask(video_lens, maxlen=video.size(1)))[
+                    :, None, :
+                ].to(memory.device)
+        else:
+            video_mask = None
+
+        x, tgt_mask, memory, memory_mask, _, _, _ = self.decoders(
+            x, tgt_mask, memory, memory_mask, None, video, video_mask
         )
         if self.normalize_before:
             x = self.after_norm(x)
@@ -153,6 +230,8 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         tgt_mask: torch.Tensor,
         memory: torch.Tensor,
         cache: List[torch.Tensor] = None,
+        video: torch.Tensor = None,
+        video_mask: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward one step.
 
@@ -172,8 +251,8 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
             cache = [None] * len(self.decoders)
         new_cache = []
         for c, decoder in zip(cache, self.decoders):
-            x, tgt_mask, memory, memory_mask = decoder(
-                x, tgt_mask, memory, None, cache=c
+            x, tgt_mask, memory, memory_mask, _, _, _ = decoder(
+                x, tgt_mask, memory, None, cache=c, video=video, video_mask=video_mask
             )
             new_cache.append(x)
 
@@ -249,6 +328,13 @@ class TransformerDecoder(BaseTransformerDecoder):
         pos_enc_class=PositionalEncoding,
         normalize_before: bool = True,
         concat_after: bool = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
+        video_vat=False,
+        video_hierarchical_attn=False,
+        video_hierarchical_feed_factor: float = 0.0,
     ):
         assert check_argument_types()
         super().__init__(
@@ -260,6 +346,12 @@ class TransformerDecoder(BaseTransformerDecoder):
             use_output_layer=use_output_layer,
             pos_enc_class=pos_enc_class,
             normalize_before=normalize_before,
+            use_video=use_video,
+            video_dim=video_dim,
+            video_first=video_first,
+            video_upsample=video_upsample,
+            video_vat=video_vat,
+            video_hierarchical_attn=video_hierarchical_attn,
         )
 
         attention_dim = encoder_output_size
@@ -277,6 +369,15 @@ class TransformerDecoder(BaseTransformerDecoder):
                 dropout_rate,
                 normalize_before,
                 concat_after,
+                video_attn=MultiHeadedAttention(
+                    attention_heads,
+                    attention_dim,
+                    src_attention_dropout_rate,
+                )
+                if video_hierarchical_attn
+                else None,
+                use_video_hier_attn=video_hierarchical_attn,
+                video_hierarchical_feed_factor=video_hierarchical_feed_factor,
             ),
         )
 
@@ -301,6 +402,10 @@ class LightweightConvolutionTransformerDecoder(BaseTransformerDecoder):
         conv_wshare: int = 4,
         conv_kernel_length: Sequence[int] = (11, 11, 11, 11, 11, 11),
         conv_usebias: int = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
     ):
         assert check_argument_types()
         if len(conv_kernel_length) != num_blocks:
@@ -317,6 +422,10 @@ class LightweightConvolutionTransformerDecoder(BaseTransformerDecoder):
             use_output_layer=use_output_layer,
             pos_enc_class=pos_enc_class,
             normalize_before=normalize_before,
+            use_video=use_video,
+            video_dim=video_dim,
+            video_first=video_first,
+            video_upsample=video_upsample,
         )
 
         attention_dim = encoder_output_size
@@ -363,6 +472,10 @@ class LightweightConvolution2DTransformerDecoder(BaseTransformerDecoder):
         conv_wshare: int = 4,
         conv_kernel_length: Sequence[int] = (11, 11, 11, 11, 11, 11),
         conv_usebias: int = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
     ):
         assert check_argument_types()
         if len(conv_kernel_length) != num_blocks:
@@ -379,6 +492,10 @@ class LightweightConvolution2DTransformerDecoder(BaseTransformerDecoder):
             use_output_layer=use_output_layer,
             pos_enc_class=pos_enc_class,
             normalize_before=normalize_before,
+            use_video=use_video,
+            video_dim=video_dim,
+            video_first=video_first,
+            video_upsample=video_upsample,
         )
 
         attention_dim = encoder_output_size
@@ -425,6 +542,10 @@ class DynamicConvolutionTransformerDecoder(BaseTransformerDecoder):
         conv_wshare: int = 4,
         conv_kernel_length: Sequence[int] = (11, 11, 11, 11, 11, 11),
         conv_usebias: int = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
     ):
         assert check_argument_types()
         if len(conv_kernel_length) != num_blocks:
@@ -441,6 +562,10 @@ class DynamicConvolutionTransformerDecoder(BaseTransformerDecoder):
             use_output_layer=use_output_layer,
             pos_enc_class=pos_enc_class,
             normalize_before=normalize_before,
+            use_video=use_video,
+            video_dim=video_dim,
+            video_first=video_first,
+            video_upsample=video_upsample,
         )
         attention_dim = encoder_output_size
 
@@ -487,6 +612,10 @@ class DynamicConvolution2DTransformerDecoder(BaseTransformerDecoder):
         conv_wshare: int = 4,
         conv_kernel_length: Sequence[int] = (11, 11, 11, 11, 11, 11),
         conv_usebias: int = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_first=False,
+        video_upsample=False,
     ):
         assert check_argument_types()
         if len(conv_kernel_length) != num_blocks:
@@ -503,6 +632,10 @@ class DynamicConvolution2DTransformerDecoder(BaseTransformerDecoder):
             use_output_layer=use_output_layer,
             pos_enc_class=pos_enc_class,
             normalize_before=normalize_before,
+            use_video=use_video,
+            video_dim=video_dim,
+            video_first=video_first,
+            video_upsample=video_upsample,
         )
         attention_dim = encoder_output_size
 

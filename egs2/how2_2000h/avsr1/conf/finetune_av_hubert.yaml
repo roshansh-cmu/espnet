@@ -1,0 +1,62 @@
+batch_type: numel
+batch_bins: 80000000
+accum_grad: 1
+max_epoch: 50
+patience: none
+log_interval: 3000
+# The initialization method for model parameters
+init: xavier_uniform
+best_model_criterion:
+-   - valid
+    - acc
+    - max
+keep_nbest_models: 10
+
+freeze_param: [
+    "encoder.encoders.mask_emb", "encoder.encoders.feature_extractor",
+    "encoder.encoders.post_extract_proj", "encoder.encoders.encoder.pos_conv",
+]
+
+input_size: 104
+encoder: av_hubert
+encoder_conf:
+    output_size: 100
+    normalize_before: false
+    freeze_finetune_updates: 8000
+    # if use espent-trained model
+    avhubert_url: espnet
+    avhubert_dir_path: ../avssl1/exp/pretrain_train_asr_avhubert_it0_small_extracted_iter0/valid.loss.best.pth
+    # if use downloaded model:
+    #hubert_url: https://dl.fbaipublicfiles.com/hubert/hubert_base_ls960.pt
+    #hubert_dir_path: ./downloads/hubert_pretrained_models/hubert_base_ls960.pt
+decoder: transformer
+decoder_conf:
+    attention_heads: 4
+    linear_units: 512
+    num_blocks: 6
+    dropout_rate: 0.15
+    positional_dropout_rate: 0.15
+    self_attention_dropout_rate: 0.15
+    src_attention_dropout_rate: 0.15
+
+
+model_conf:
+    ctc_weight: 0.0
+    lsm_weight: 0.15
+    length_normalized_loss: false
+
+optim: adam
+optim_conf:
+    lr: 0.004
+    
+scheduler: warmuplr
+scheduler_conf:
+    warmup_steps: 25000
+
+unused_parameters: true
+
+frontend: null
+
+normalize: null
+
+specaug: null

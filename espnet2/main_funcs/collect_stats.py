@@ -53,6 +53,7 @@ def collect_stats(
 
         with DatadirWriter(output_dir / mode) as datadir_writer:
             for iiter, (keys, batch) in enumerate(itr, 1):
+                logging.info(f" Keys {keys}")
                 batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
 
                 # 1. Write shape file

@@ -1,21 +1,11 @@
+import logging
 from contextlib import contextmanager
 from distutils.version import LooseVersion
-import logging
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from typeguard import check_argument_types
 
-from espnet.nets.e2e_asr_common import ErrorCalculator
-from espnet.nets.pytorch_backend.nets_utils import th_accuracy
-from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
-from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (
-    LabelSmoothingLoss,  # noqa: H301
-)
 from espnet2.asr.ctc import CTC
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
@@ -28,6 +18,12 @@ from espnet2.asr.transducer.utils import get_transducer_task_io
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.torch_utils.device_funcs import force_gatherable
 from espnet2.train.abs_espnet_model import AbsESPnetModel
+from espnet.nets.e2e_asr_common import ErrorCalculator
+from espnet.nets.pytorch_backend.nets_utils import th_accuracy
+from espnet.nets.pytorch_backend.transformer.add_sos_eos import add_sos_eos
+from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (
+    LabelSmoothingLoss,
+)  # noqa: H301
 
 if LooseVersion(torch.__version__) >= LooseVersion("1.6.0"):
     from torch.cuda.amp import autocast
@@ -105,7 +101,8 @@ class ESPnetASRModel(AbsESPnetModel):
             self.joint_network = joint_network
 
             self.criterion_transducer = RNNTLoss(
-                blank=self.blank_id, fastemit_lambda=0.0,
+                blank=self.blank_id,
+                fastemit_lambda=0.0,
             )
 
             if report_cer or report_wer:
@@ -187,9 +184,11 @@ class ESPnetASRModel(AbsESPnetModel):
         text = text[:, : text_lengths.max()]
 
         # 1. Encoder
+
         encoder_out, encoder_out_lens = self.encode(
             speech, speech_lengths, video, video_lengths
         )
+
         intermediate_outs = None
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
@@ -240,7 +239,11 @@ class ESPnetASRModel(AbsESPnetModel):
                 loss_transducer,
                 cer_transducer,
                 wer_transducer,
-            ) = self._calc_transducer_loss(encoder_out, encoder_out_lens, text,)
+            ) = self._calc_transducer_loss(
+                encoder_out,
+                encoder_out_lens,
+                text,
+            )
 
             if loss_ctc is not None:
                 loss = loss_transducer + (self.ctc_weight * loss_ctc)
@@ -258,7 +261,12 @@ class ESPnetASRModel(AbsESPnetModel):
             # 2b. Attention decoder branch
             if self.ctc_weight != 1.0:
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-                    encoder_out, encoder_out_lens, text, text_lengths
+                    encoder_out,
+                    encoder_out_lens,
+                    text,
+                    text_lengths,
+                    video,
+                    video_lengths,
                 )
 
             # 3. CTC-Att loss definition
@@ -286,10 +294,6 @@ class ESPnetASRModel(AbsESPnetModel):
         self,
         speech: torch.Tensor,
         speech_lengths: torch.Tensor,
-        text: torch.Tensor,
-        text_lengths: torch.Tensor,
-        video: torch.Tensor = None,
-        video_lengths: torch.Tensor = None,
         **kwargs,
     ) -> Dict[str, torch.Tensor]:
         if self.extract_feats_in_collect_stats:
@@ -342,7 +346,7 @@ class ESPnetASRModel(AbsESPnetModel):
             )
         else:
             encoder_out, encoder_out_lens, _ = self.encoder(
-                feats, feats_lengths, video, video_lengths
+                feats, feats_lengths, video=video, video_lengths=video_lengths
             )
         intermediate_outs = None
         if isinstance(encoder_out, tuple):
@@ -359,10 +363,10 @@ class ESPnetASRModel(AbsESPnetModel):
             encoder_out.size(),
             speech.size(0),
         )
-        assert encoder_out.size(1) <= encoder_out_lens.max(), (
-            encoder_out.size(),
-            encoder_out_lens.max(),
-        )
+        # assert encoder_out.size(1) <= encoder_out_lens.max(), (
+        #    encoder_out.size(),
+        #    encoder_out_lens.max(),
+        # )
 
         if intermediate_outs is not None:
             return (encoder_out, intermediate_outs), encoder_out_lens
@@ -479,13 +483,20 @@ class ESPnetASRModel(AbsESPnetModel):
         encoder_out_lens: torch.Tensor,
         ys_pad: torch.Tensor,
         ys_pad_lens: torch.Tensor,
+        video: torch.Tensor = None,
+        video_lens: torch.Tensor = None,
     ):
         ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
         ys_in_lens = ys_pad_lens + 1
 
         # 1. Forward decoder
         decoder_out, _ = self.decoder(
-            encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens
+            encoder_out,
+            encoder_out_lens,
+            ys_in_pad,
+            ys_in_lens,
+            video=video,
+            video_lens=video_lens,
         )
 
         # 2. Compute attention loss
@@ -542,7 +553,10 @@ class ESPnetASRModel(AbsESPnetModel):
 
         """
         decoder_in, target, t_len, u_len = get_transducer_task_io(
-            labels, encoder_out_lens, ignore_id=self.ignore_id, blank_id=self.blank_id,
+            labels,
+            encoder_out_lens,
+            ignore_id=self.ignore_id,
+            blank_id=self.blank_id,
         )
 
         self.decoder.set_device(encoder_out.device)
@@ -552,7 +566,12 @@ class ESPnetASRModel(AbsESPnetModel):
             encoder_out.unsqueeze(2), decoder_out.unsqueeze(1)
         )
 
-        loss_transducer = self.criterion_transducer(joint_out, target, t_len, u_len,)
+        loss_transducer = self.criterion_transducer(
+            joint_out,
+            target,
+            t_len,
+            u_len,
+        )
 
         cer_transducer, wer_transducer = None, None
         if not self.training and self.error_calculator_trans is not None:

@@ -12,7 +12,10 @@ from typeguard import check_argument_types
 
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
+from espnet.nets.pytorch_backend.transformer.embedding import (
+    PositionalEncoding,
+    ScaledPositionalEncoding,
+)
 from espnet.nets.pytorch_backend.transformer.encoder_layer import EncoderLayer
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.multi_layer_conv import Conv1dLinear
@@ -75,6 +78,10 @@ class TransformerEncoder(AbsEncoder):
         padding_idx: int = -1,
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
+        use_video: bool = False,
+        video_dim: int = 0,
+        video_fusion_type: str = "vat",
+        video_upsample_mode: str = "upsample",
     ):
         assert check_argument_types()
         super().__init__()
@@ -155,6 +162,33 @@ class TransformerEncoder(AbsEncoder):
             assert 0 < min(interctc_layer_idx) and max(interctc_layer_idx) < num_blocks
         self.interctc_use_conditioning = interctc_use_conditioning
         self.conditioning_layer = None
+        self.use_video = use_video
+        self.video_fusion_type = video_fusion_type
+        self.video_upsample_mode = video_upsample_mode
+        if use_video:
+            self.video_dropout = torch.nn.Dropout(dropout_rate)
+            if self.video_fusion_type == "concat":
+                self.video_projection = torch.nn.Linear(
+                    video_dim, output_size // 2, bias=False
+                )
+                self.video_fusion_layer = torch.nn.Linear(
+                    output_size + output_size // 2, output_size
+                )
+            elif self.video_fusion_type == "vat":
+                if self.video_upsample_mode == "attention":
+                    self.video_posenc = ScaledPositionalEncoding(
+                        output_size, positional_dropout_rate
+                    )
+                    self.audio_posenc = ScaledPositionalEncoding(
+                        output_size, positional_dropout_rate
+                    )
+                self.video_projection = torch.nn.Linear(
+                    video_dim, output_size, bias=False
+                )
+            if self.video_upsample_mode == "attention":
+                self.video_upsample_layer = MultiHeadedAttention(
+                    attention_heads, output_size, attention_dropout_rate
+                )
 
     def output_size(self) -> int:
         return self._output_size
@@ -165,6 +199,8 @@ class TransformerEncoder(AbsEncoder):
         ilens: torch.Tensor,
         prev_states: torch.Tensor = None,
         ctc: CTC = None,
+        video: torch.Tensor = None,
+        video_lengths: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Embed positions in tensor.
 
@@ -196,6 +232,46 @@ class TransformerEncoder(AbsEncoder):
             xs_pad, masks = self.embed(xs_pad, masks)
         else:
             xs_pad = self.embed(xs_pad)
+
+        if self.use_video:
+            # print(
+            #     f" XSPAD SHAPES {[x.shape if x is not None else None for x in xs_pad]} VID {video.shape if video is not None else None}"
+            # )
+            if isinstance(xs_pad, tuple):
+                x_in, posenc = [x for x in xs_pad]
+            else:
+                x_in = xs_pad
+                posenc = None
+            video = self.video_projection(video)
+            video = self.video_dropout(video)
+
+            if self.video_upsample_mode == "upsample":
+                upsample_factor = int(np.ceil(float(x_in.size(1)) / video.shape[1]))
+                if upsample_factor > 1:
+                    video = torch.repeat_interleave(
+                        video, repeats=upsample_factor, dim=1
+                    )
+                elif upsample_factor < 1:
+                    factor = int(np.ceil(float(video.size(1) / x_in.size(1))))
+                    video = video[:, 0 : video.shape[1] : factor, :]
+                if video.shape[1] < x_in.shape[1]:
+                    padlen = x_in.shape[1] - video.shape[1]
+                    video = torch.cat((video, video[:, -padlen:, :]), dim=1)
+                elif video.shape[1] > x_in.shape[1]:
+                    video = video[:, : x_in.shape[1], :]
+            elif self.video_upsample_mode == "attention":
+                video += self.video_posenc(video)
+                x_in += self.audio_posenc(x_in)
+                video_mask = (~make_pad_mask(video_lengths)[:, None, :]).to(
+                    video.device
+                )
+                video = self.video_upsample_layer(x_in, video, video, video_mask)
+            if self.video_fusion_type == "vat":
+                x_in = x_in + video
+            elif self.video_fusion_type == "concat":
+                x_in = torch.cat((x_in, video), dim=-1)
+                x_in = self.video_fusion_layer(x_in)
+            xs_pad = (x_in, posenc) if posenc is not None else x_in
 
         intermediate_outs = []
         if len(self.interctc_layer_idx) == 0:

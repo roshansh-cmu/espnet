@@ -14,7 +14,7 @@ class MultiSequential(torch.nn.Sequential):
 
     def forward(self, *args):
         """Repeat."""
-        for m in self:
+        for i, m in enumerate(self):
             args = m(*args)
         return args
 

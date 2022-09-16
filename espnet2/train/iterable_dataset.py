@@ -1,6 +1,8 @@
 """Iterable dataset module."""
 import copy
 from io import StringIO
+import logging 
+
 from pathlib import Path
 from typing import Callable
 from typing import Collection
@@ -20,6 +22,7 @@ from espnet2.train.dataset import ESPnetDataset
 
 
 def load_kaldi(input):
+    logging.info(f"Reading {input}")
     retval = kaldiio.load_mat(input)
     if isinstance(retval, tuple):
         assert len(retval) == 2, len(retval)

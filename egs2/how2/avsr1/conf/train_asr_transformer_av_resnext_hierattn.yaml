@@ -1,0 +1,72 @@
+# general
+batch_type: numel
+batch_bins: 80000000
+accum_grad: 1
+max_epoch: 60
+patience: 10
+
+input_size: 80
+
+init: none
+best_model_criterion:
+-   - valid
+    - acc
+    - max
+max_epoch: 50
+
+log_interval: 1200
+scheduler_conf:
+    warmup_steps: 10000
+
+optim: adam
+optim_conf:
+    lr: 0.001
+scheduler: reducelronplateau #warmuplr
+scheduler_conf:
+    factor: 0.85
+    mode: max
+    patience: 3
+        #warmup_steps: 15000
+
+# criterion
+val_scheduler_criterion:
+    - valid
+    - acc
+early_stopping_criterion:
+    - valid
+    - acc
+    - max
+best_model_criterion:
+-   - valid
+    - acc
+    - max
+keep_nbest_models: 10
+
+# MTL
+model_conf:
+    ctc_weight: 0.3
+    lsm_weight: 0.1
+    length_normalized_loss: false
+
+# network
+encoder: transformer
+encoder_conf:
+    output_size: 256
+    attention_heads: 4
+    linear_units: 2048
+    num_blocks: 12
+    dropout_rate: 0.1
+    positional_dropout_rate: 0.1
+    attention_dropout_rate: 0.1
+    input_layer: conv2d
+    normalize_before: true
+decoder: transformer
+decoder_conf:
+    num_blocks: 6
+    linear_units: 2048
+    attention_heads: 4
+    dropout_rate: 0.1
+    use_video: true
+    video_dim: 2048
+    video_hierarchical_attn: true
+    self_attention_dropout_rate: 0.0

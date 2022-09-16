@@ -29,7 +29,7 @@ class EncoderLayer(nn.Module):
             `PositionwiseFeedForward`, `MultiLayeredConv1d`, or `Conv1dLinear` instance
             can be used as the argument.
         conv_module (torch.nn.Module): Convolution module instance.
-            `ConvlutionModule` instance can be used as the argument.
+            `ConvolutionModule` instance can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
         concat_after (bool): Whether to concat attention layer's input and output.
