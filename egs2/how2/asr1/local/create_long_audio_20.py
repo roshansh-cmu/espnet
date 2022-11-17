@@ -9,7 +9,8 @@ import numpy as np
 
 segment_duration = 20
 
-for dset in ["train_av_res", "val_av_res", "dev5_test"]:
+#for dset in ["train_av_res", "val_av_res", "dev5_test"]:
+for dset in ["train_subset_50", "val_av_res", "dev5_test"]:
     dir = os.path.join("dump", "fbank_pitch", dset)
     out_dir = os.path.join("dump", "fbank_pitch", dset + "_seg" + str(segment_duration))
     feat_dir = os.path.join(out_dir, "feats")

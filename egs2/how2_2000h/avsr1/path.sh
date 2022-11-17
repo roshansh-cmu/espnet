@@ -1,1 +1,1 @@
-../../TEMPLATE/asr1/path.sh
+../asr1/path.sh
