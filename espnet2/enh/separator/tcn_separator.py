@@ -1,20 +1,15 @@
 from collections import OrderedDict
-from distutils.version import LooseVersion
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
+from packaging.version import parse as V
 from torch_complex.tensor import ComplexTensor
 
 from espnet2.enh.layers.complex_utils import is_complex
 from espnet2.enh.layers.tcn import TemporalConvNet
 from espnet2.enh.separator.abs_separator import AbsSeparator
 
-
-is_torch_1_9_plus = LooseVersion(torch.__version__) >= LooseVersion("1.9.0")
+is_torch_1_9_plus = V(torch.__version__) >= V("1.9.0")
 
 
 class TCNSeparator(AbsSeparator):
@@ -22,6 +17,7 @@ class TCNSeparator(AbsSeparator):
         self,
         input_dim: int,
         num_spk: int = 2,
+        predict_noise: bool = False,
         layer: int = 8,
         stack: int = 3,
         bottleneck_dim: int = 128,
@@ -36,6 +32,7 @@ class TCNSeparator(AbsSeparator):
         Args:
             input_dim: input feature dimension
             num_spk: number of speakers
+            predict_noise: whether to output the estimated noise signal
             layer: int, number of layers in each stack.
             stack: int, number of stacks
             bottleneck_dim: bottleneck dimension
@@ -49,6 +46,7 @@ class TCNSeparator(AbsSeparator):
         super().__init__()
 
         self._num_spk = num_spk
+        self.predict_noise = predict_noise
 
         if nonlinear not in ("sigmoid", "relu", "tanh"):
             raise ValueError("Not supporting nonlinear={}".format(nonlinear))
@@ -60,7 +58,7 @@ class TCNSeparator(AbsSeparator):
             P=kernel,
             X=layer,
             R=stack,
-            C=num_spk,
+            C=num_spk + 1 if predict_noise else num_spk,
             norm_type=norm_type,
             causal=causal,
             mask_nonlinear=nonlinear,
@@ -101,13 +99,18 @@ class TCNSeparator(AbsSeparator):
 
         masks = self.tcn(feature)  # B, num_spk, N, L
         masks = masks.transpose(2, 3)  # B, num_spk, L, N
-        masks = masks.unbind(dim=1)  # List[B, L, N]
+        if self.predict_noise:
+            *masks, mask_noise = masks.unbind(dim=1)  # List[B, L, N]
+        else:
+            masks = masks.unbind(dim=1)  # List[B, L, N]
 
         masked = [input * m for m in masks]
 
         others = OrderedDict(
             zip(["mask_spk{}".format(i + 1) for i in range(len(masks))], masks)
         )
+        if self.predict_noise:
+            others["noise1"] = input * mask_noise
 
         return masked, ilens, others
 

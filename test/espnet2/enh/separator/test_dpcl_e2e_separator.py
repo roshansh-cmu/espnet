@@ -1,5 +1,4 @@
 import pytest
-
 import torch
 from torch import Tensor
 from torch_complex import ComplexTensor
@@ -13,6 +12,7 @@ from espnet2.enh.separator.dpcl_e2e_separator import DPCLE2ESeparator
 @pytest.mark.parametrize("unit", [8])
 @pytest.mark.parametrize("dropout", [0.0, 0.2])
 @pytest.mark.parametrize("num_spk", [2])
+@pytest.mark.parametrize("predict_noise", [True, False])
 @pytest.mark.parametrize("emb_D", [40])
 @pytest.mark.parametrize("nonlinear", ["relu", "sigmoid", "tanh"])
 @pytest.mark.parametrize("alpha", [1.0, 5.0])
@@ -24,6 +24,7 @@ def test_dpcl_e2e_separator_forward_backward_complex(
     unit,
     dropout,
     num_spk,
+    predict_noise,
     emb_D,
     nonlinear,
     alpha,
@@ -36,6 +37,7 @@ def test_dpcl_e2e_separator_forward_backward_complex(
         unit=unit,
         dropout=dropout,
         num_spk=num_spk,
+        predict_noise=predict_noise,
         emb_D=emb_D,
         nonlinear=nonlinear,
         alpha=alpha,
@@ -62,6 +64,7 @@ def test_dpcl_e2e_separator_forward_backward_complex(
 @pytest.mark.parametrize("unit", [8])
 @pytest.mark.parametrize("dropout", [0.0, 0.2])
 @pytest.mark.parametrize("num_spk", [2])
+@pytest.mark.parametrize("predict_noise", [True, False])
 @pytest.mark.parametrize("emb_D", [40])
 @pytest.mark.parametrize("nonlinear", ["relu", "sigmoid", "tanh"])
 @pytest.mark.parametrize("alpha", [1.0, 5.0])
@@ -73,6 +76,7 @@ def test_dpcl_e2e_separator_forward_backward_real(
     unit,
     dropout,
     num_spk,
+    predict_noise,
     emb_D,
     nonlinear,
     alpha,
@@ -85,6 +89,7 @@ def test_dpcl_e2e_separator_forward_backward_real(
         unit=unit,
         dropout=dropout,
         num_spk=num_spk,
+        predict_noise=predict_noise,
         emb_D=emb_D,
         nonlinear=nonlinear,
         alpha=alpha,

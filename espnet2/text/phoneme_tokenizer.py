@@ -1,18 +1,14 @@
 import logging
-from pathlib import Path
 import re
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Union
 import warnings
+from pathlib import Path
+from typing import Iterable, List, Optional, Union
 
 import g2p_en
 import jamo
 from typeguard import check_argument_types
 
 from espnet2.text.abs_tokenizer import AbsTokenizer
-
 
 g2p_choices = [
     None,
@@ -25,6 +21,7 @@ g2p_choices = [
     "pyopenjtalk_prosody",
     "pypinyin_g2p",
     "pypinyin_g2p_phone",
+    "pypinyin_g2p_phone_without_prosody",
     "espeak_ng_arabic",
     "espeak_ng_german",
     "espeak_ng_french",
@@ -36,10 +33,15 @@ g2p_choices = [
     "espeak_ng_dutch",
     "espeak_ng_english_us_vits",
     "espeak_ng_hindi",
+    "espeak_ng_italian",
+    "espeak_ng_ukrainian",
+    "espeak_ng_polish",
     "g2pk",
     "g2pk_no_space",
+    "g2pk_explicit_space",
     "korean_jaso",
     "korean_jaso_no_space",
+    "g2p_is",
 ]
 
 
@@ -61,8 +63,9 @@ def pyopenjtalk_g2p(text) -> List[str]:
 
 
 def pyopenjtalk_g2p_accent(text) -> List[str]:
-    import pyopenjtalk
     import re
+
+    import pyopenjtalk
 
     phones = []
     for labels in pyopenjtalk.run_frontend(text)[1]:
@@ -73,8 +76,9 @@ def pyopenjtalk_g2p_accent(text) -> List[str]:
 
 
 def pyopenjtalk_g2p_accent_with_pause(text) -> List[str]:
-    import pyopenjtalk
     import re
+
+    import pyopenjtalk
 
     phones = []
     for labels in pyopenjtalk.run_frontend(text)[1]:
@@ -181,28 +185,51 @@ def _numeric_feature_by_regex(regex, s):
 
 
 def pypinyin_g2p(text) -> List[str]:
-    from pypinyin import pinyin
-    from pypinyin import Style
+    from pypinyin import Style, pinyin
 
     phones = [phone[0] for phone in pinyin(text, style=Style.TONE3)]
     return phones
 
 
 def pypinyin_g2p_phone(text) -> List[str]:
-    from pypinyin import pinyin
-    from pypinyin import Style
-    from pypinyin.style._utils import get_finals
-    from pypinyin.style._utils import get_initials
+    from pypinyin import Style, pinyin
+    from pypinyin.style._utils import get_finals, get_initials
 
     phones = [
         p
         for phone in pinyin(text, style=Style.TONE3)
         for p in [
             get_initials(phone[0], strict=True),
-            get_finals(phone[0], strict=True),
+            get_finals(phone[0][:-1], strict=True) + phone[0][-1]
+            if phone[0][-1].isdigit()
+            else get_finals(phone[0], strict=True)
+            if phone[0][-1].isalnum()
+            else phone[0],
         ]
-        if len(p) != 0
+        # Remove the case of individual tones as a phoneme
+        if len(p) != 0 and not p.isdigit()
     ]
+    return phones
+
+
+def pypinyin_g2p_phone_without_prosody(text) -> List[str]:
+    from pypinyin import Style, pinyin
+    from pypinyin.style._utils import get_finals, get_initials
+
+    phones = []
+    for phone in pinyin(text, style=Style.NORMAL, strict=False):
+        initial = get_initials(phone[0], strict=False)
+        final = get_finals(phone[0], strict=False)
+        if len(initial) != 0:
+            phones.append(initial)
+            if initial in ["x", "y", "j", "q"]:
+                if final == "un":
+                    final = "vn"
+                elif final == "uan":
+                    final = "van"
+            if final == "ue":
+                final = "ve"
+        phones.append(final)
     return phones
 
 
@@ -240,12 +267,20 @@ class G2pk:
     """
 
     def __init__(
-        self, descritive=False, group_vowels=False, to_syl=False, no_space=False
+        self,
+        descritive=False,
+        group_vowels=False,
+        to_syl=False,
+        no_space=False,
+        explicit_space=False,
+        space_symbol="<space>",
     ):
         self.descritive = descritive
         self.group_vowels = group_vowels
         self.to_syl = to_syl
         self.no_space = no_space
+        self.explicit_space = explicit_space
+        self.space_symbol = space_symbol
         self.g2p = None
 
     def __call__(self, text) -> List[str]:
@@ -265,6 +300,10 @@ class G2pk:
         if self.no_space:
             # remove space which represents word serapater
             phones = list(filter(lambda s: s != " ", phones))
+
+        if self.explicit_space:
+            # replace space as explicit space symbol
+            phones = list(map(lambda s: s if s != " " else self.space_symbol, phones))
         return phones
 
 
@@ -357,6 +396,38 @@ class Phonemizer:
             return [c.replace(" ", "<space>") for c in tokens]
 
 
+class IsG2p:  # pylint: disable=too-few-public-methods
+    """Minimal wrapper for https://github.com/grammatek/ice-g2p
+
+    The g2p module uses a Bi-LSTM model along with
+    a pronunciation dictionary to generate phonemization
+    Unfortunately does not support multi-thread phonemization as of yet
+    """
+
+    def __init__(
+        self,
+        dialect: str = "standard",
+        syllabify: bool = True,
+        word_sep: str = ",",
+        use_dict: bool = True,
+    ):
+        self.dialect = dialect
+        self.syllabify = syllabify
+        self.use_dict = use_dict
+        from ice_g2p.transcriber import Transcriber
+
+        self.transcriber = Transcriber(
+            use_dict=self.use_dict,
+            syllab_symbol=".",
+            stress_label=True,
+            word_sep=word_sep,
+            lang_detect=True,
+        )
+
+    def __call__(self, text) -> List[str]:
+        return self.transcriber.transcribe(text).split()
+
+
 class PhonemeTokenizer(AbsTokenizer):
     def __init__(
         self,
@@ -386,6 +457,8 @@ class PhonemeTokenizer(AbsTokenizer):
             self.g2p = pypinyin_g2p
         elif g2p_type == "pypinyin_g2p_phone":
             self.g2p = pypinyin_g2p_phone
+        elif g2p_type == "pypinyin_g2p_phone_without_prosody":
+            self.g2p = pypinyin_g2p_phone_without_prosody
         elif g2p_type == "espeak_ng_arabic":
             self.g2p = Phonemizer(
                 language="ar",
@@ -456,10 +529,26 @@ class PhonemeTokenizer(AbsTokenizer):
                 with_stress=True,
                 preserve_punctuation=True,
             )
+        elif g2p_type == "espeak_ng_italian":
+            self.g2p = Phonemizer(
+                language="it",
+                backend="espeak",
+                with_stress=True,
+                preserve_punctuation=True,
+            )
+        elif g2p_type == "espeak_ng_polish":
+            self.g2p = Phonemizer(
+                language="pl",
+                backend="espeak",
+                with_stress=True,
+                preserve_punctuation=True,
+            )
         elif g2p_type == "g2pk":
             self.g2p = G2pk(no_space=False)
         elif g2p_type == "g2pk_no_space":
             self.g2p = G2pk(no_space=True)
+        elif g2p_type == "g2pk_explicit_space":
+            self.g2p = G2pk(explicit_space=True, space_symbol=space_symbol)
         elif g2p_type == "espeak_ng_english_us_vits":
             # VITS official implementation-like processing
             # Reference: https://github.com/jaywalnut310/vits
@@ -477,6 +566,10 @@ class PhonemeTokenizer(AbsTokenizer):
             self.g2p = Jaso(space_symbol=space_symbol, no_space=False)
         elif g2p_type == "korean_jaso_no_space":
             self.g2p = Jaso(no_space=True)
+        elif g2p_type == "g2p_is":
+            self.g2p = IsG2p()
+        elif g2p_type == "g2p_is_north":
+            self.g2p = IsG2p(dialect="north")
         else:
             raise NotImplementedError(f"Not supported: g2p_type={g2p_type}")
 
@@ -526,3 +619,19 @@ class PhonemeTokenizer(AbsTokenizer):
     def tokens2text(self, tokens: Iterable[str]) -> str:
         # phoneme type is not invertible
         return "".join(tokens)
+
+    def text2tokens_svs(self, syllable: str) -> List[str]:
+        # Note(Yuning): fix syllabel2phoneme mismatch
+        # If needed, customed_dic can be changed into extra input
+        customed_dic = {
+            "へ": ["h", "e"],
+            "ヴぁ": ["v", "a"],
+            "ヴぃ": ["v", "i"],
+            "ヴぇ": ["v", "e"],
+            "ヴぉ": ["v", "i"],
+            "でぇ": ["dy", "e"],
+        }
+        tokens = self.g2p(syllable)
+        if syllable in customed_dic:
+            tokens = customed_dic[syllable]
+        return tokens

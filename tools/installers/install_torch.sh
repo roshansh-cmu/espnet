@@ -5,6 +5,18 @@ log() {
     echo -e "$(date '+%Y-%m-%dT%H:%M:%S') (${fname}:${BASH_LINENO[0]}:${FUNCNAME[1]}) $*"
 }
 
+unames="$(uname -s)"
+if [[ ${unames} =~ Linux ]]; then
+    os_type=linux
+elif [[ ${unames} =~ Darwin ]]; then
+    os_type=macos
+elif [[ ${unames} =~ MINGW || ${unames} =~ CYGWIN || ${unames} =~ MSYS ]]; then
+    os_type=windows
+else
+    os_type=unknown
+fi
+
+
 if [ $# -ne 3 ]; then
     log "Usage: $0 <use_conda| true or false> <torch_version> <cuda_version>"
     exit 1
@@ -18,8 +30,20 @@ elif [ $# -eq 3 ]; then
     torch_version="$2"
     cuda_version="$3"
 fi
+
 if [ "${cuda_version}" = cpu ] || [ "${cuda_version}" = CPU ]; then
     cuda_version=
+fi
+
+if [ -n "${cuda_version}" ] && [ "${os_type}" = macos ]; then
+    log "Error: cuda is not supported for MacOS"
+    exit 1
+fi
+
+if [ "${os_type}" == macos ]; then
+    pip_cpu_module_suffix=
+else
+    pip_cpu_module_suffix="+cpu"
 fi
 
 
@@ -29,7 +53,7 @@ cuda_version_without_dot="${cuda_version/\./}"
 
 python_plus(){
     python3 <<EOF
-from distutils.version import LooseVersion as L
+from packaging.version import parse as L
 if L('$python_version') >= L('$1'):
     print("true")
 else:
@@ -38,7 +62,7 @@ EOF
 }
 pytorch_plus(){
     python3 <<EOF
-from distutils.version import LooseVersion as L
+from packaging.version import parse as L
 if L('$torch_version') >= L('$1'):
     print("true")
 else:
@@ -51,6 +75,12 @@ install_torch(){
         if [ -z "${cuda_version}" ]; then
             log conda install -y "pytorch=${torch_version}" "torchaudio=$1" cpuonly -c pytorch
             conda install -y "pytorch=${torch_version}" "torchaudio=$1" cpuonly -c pytorch
+        elif [ "${cuda_version}" = "11.5" ] || [ "${cuda_version}" = "11.6" ]; then
+            # NOTE(kamo): In my environment, cudatoolkit of conda-forge only could be installed, but I don't know why @ 12, May, 2022
+            cudatoolkit_channel=conda-forge
+            log conda install -y "pytorch=${torch_version}" "torchaudio=$1" "cudatoolkit=${cuda_version}" -c pytorch -c "${cudatoolkit_channel}"
+            conda install -y "pytorch=${torch_version}" "torchaudio=$1" "cudatoolkit=${cuda_version}" -c pytorch -c "${cudatoolkit_channel}"
+
         elif [ "${cuda_version}" = "11.1" ] || [ "${cuda_version}" = "11.2" ]; then
             # Anaconda channel, which is default main channel, doesn't provide cudatoolkit=11.1, 11.2 now (Any pytorch version doesn't provide cuda=11.2).
             # https://anaconda.org/anaconda/cudatoolkit/files
@@ -70,8 +100,8 @@ install_torch(){
     else
         if $(pytorch_plus 1.10.0); then
             if [ -z "${cuda_version}" ]; then
-                log python3 -m pip install "torch==${torch_version}+cpu" "torchaudio==$1+cpu" -f https://download.pytorch.org/whl/torch_stable.html
-                python3 -m pip install "torch==${torch_version}+cpu" "torchaudio==$1+cpu" -f https://download.pytorch.org/whl/torch_stable.html
+                log python3 -m pip install "torch==${torch_version}${pip_cpu_module_suffix}" "torchaudio==$1${pip_cpu_module_suffix}" -f https://download.pytorch.org/whl/torch_stable.html
+                python3 -m pip install "torch==${torch_version}${pip_cpu_module_suffix}" "torchaudio==$1${pip_cpu_module_suffix}" -f https://download.pytorch.org/whl/torch_stable.html
             else
                 if [ "${cuda_version}" = "$2" ]; then
                     log python3 -m pip install "torch==${torch_version}" "torchaudio==$1"
@@ -83,8 +113,8 @@ install_torch(){
             fi
         else
             if [ -z "${cuda_version}" ]; then
-                log python3 -m pip install "torch==${torch_version}+cpu" "torchaudio==$1" -f https://download.pytorch.org/whl/torch_stable.html
-                python3 -m pip install "torch==${torch_version}+cpu" "torchaudio==$1" -f https://download.pytorch.org/whl/torch_stable.html
+                log python3 -m pip install "torch==${torch_version}${pip_cpu_module_suffix}" "torchaudio==$1" -f https://download.pytorch.org/whl/torch_stable.html
+                python3 -m pip install "torch==${torch_version}${pip_cpu_module_suffix}" "torchaudio==$1" -f https://download.pytorch.org/whl/torch_stable.html
             else
                 if [ "${cuda_version}" = "$2" ]; then
                     log python3 -m pip install "torch==${torch_version}" "torchaudio==$1"
@@ -120,19 +150,44 @@ log "[INFO] python_version=${python_version}"
 log "[INFO] torch_version=${torch_version}"
 log "[INFO] cuda_version=${cuda_version}"
 
+if ! python -c "import packaging.version" &> /dev/null; then
+    python3 -m pip install packaging
+fi
 
-if $(pytorch_plus 1.10.2); then
+if $(pytorch_plus 1.12.2); then
     log "[ERROR] This script doesn't support pytorch=${torch_version}"
     exit 1
+
+elif $(pytorch_plus 1.12.1); then
+    check_python_version 3.11  # Error if python>=<number>
+    check_cuda_version 11.6 11.3 10.2  # Error if cuda_version doesn't match with any given numbers
+    install_torch 0.12.1 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
+
+elif $(pytorch_plus 1.12.0); then
+    check_python_version 3.11  # Error if python>=<number>
+    check_cuda_version 11.6 11.3 10.2  # Error if cuda_version doesn't match with any given numbers
+    install_torch 0.12.0 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
+
+elif $(pytorch_plus 1.11.0); then
+    check_python_version 3.11  # Error if python>=<number>
+    check_cuda_version 11.5 11.3 11.1 10.2  # Error if cuda_version doesn't match with any given numbers
+    install_torch 0.11.0 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
+
+elif $(pytorch_plus 1.10.2); then
+    check_python_version 3.10  # Error if python>=<number>
+    check_cuda_version 11.3 11.1 10.2  # Error if cuda_version doesn't match with any given numbers
+    install_torch 0.10.2 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
 
 elif $(pytorch_plus 1.10.1); then
     check_python_version 3.10  # Error if python>=<number>
     check_cuda_version 11.3 11.1 10.2  # Error if cuda_version doesn't match with any given numbers
     install_torch 0.10.1 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
+
 elif $(pytorch_plus 1.10.0); then
-    check_python_version 3.10  # Error if python>=<number>
+    check_python_version 3.11  # Error if python>=<number>
     check_cuda_version 11.3 11.1 10.2  # Error if cuda_version doesn't match with any given numbers
     install_torch 0.10.0 10.2  # install_torch <torch-audio-ver> <default-cuda-version-for-pip-install-torch>
+
 elif $(pytorch_plus 1.9.2); then
     log "[ERROR] pytorch=${torch_version} doesn't exist"
     exit 1

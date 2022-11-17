@@ -4,12 +4,7 @@ from io import StringIO
 import logging 
 
 from pathlib import Path
-from typing import Callable
-from typing import Collection
-from typing import Dict
-from typing import Iterator
-from typing import Tuple
-from typing import Union
+from typing import Callable, Collection, Dict, Iterator, Tuple, Union
 
 import kaldiio
 import numpy as np
