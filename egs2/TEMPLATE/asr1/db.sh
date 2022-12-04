@@ -310,5 +310,6 @@ if [[ "$(hostname -d)" == clsp.jhu.edu ]]; then
     TOTONAC=downloads
     GOOGLEI18N=downloads
     MALAYALAM=
+    TEDSUM="/ocean/projects/cis210027p/shared/corpora/TEDSummary/"
 
 fi

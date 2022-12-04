@@ -1,31 +1,34 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -e
 set -u
 set -o pipefail
 
-train_set="tr_2000h_utt"
-valid_set="cv05_utt"
-test_sets="dev5_test_utt"
+train_set="train"
+valid_set="valid"
+test_sets="test"
+asr_config=conf/train_sum_conformer_lf.yaml
+inference_config=conf/decode_sum.yaml
 
-asr_config=conf/tuning/train_asr_conformer.yaml
-inference_config=conf/decode_asr.yaml
-
-feats_type=extracted
+feats_type="raw"
 
 token_type=bpe
 
 nlsyms=data/nlsyms
-nbpe=1000
-bpe_nlsyms="[hes]"
+nbpe=500
+bpe_nlsyms="[SEP]"
 
 use_lm=false
 
+## Run local/run_asr.sh to pretrain an ASR Model on How2, and fine-tune that model on Speech Summarization
 
 ./asr.sh \
     --lang en \
+    --stage 2 \
+    --stop_stage 4 \
     --feats_type ${feats_type} \
     --token_type ${token_type} \
+    --speed_perturb_factors "0.9 1.0 1.1" \
     --nbpe ${nbpe} \
     --nlsyms_txt ${nlsyms} \
     --bpe_nlsyms ${bpe_nlsyms} \
@@ -34,6 +37,6 @@ use_lm=false
     --inference_config "${inference_config}" \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
+    --max_wav_duration 100000000000 \
     --test_sets "${test_sets}" \
-    --asr_args "--use_wandb true --wandb_project how2-proposal --wandb_name how2_base_d8_l1024_conformer" \
     --bpe_train_text "data/${train_set}/text" "$@"
