@@ -43,6 +43,7 @@ from espnet2.asr.encoder.transformer_encoder_multispkr import (
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
 from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
 from espnet2.asr.espnet_model import ESPnetASRModel
+from espnet2.asr.espnet_model_av import ESPnetAVASRModel
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.asr.frontend.fused import FusedFrontends
@@ -113,6 +114,7 @@ model_choices = ClassChoices(
     "model",
     classes=dict(
         espnet=ESPnetASRModel,
+        espnet_av=ESPnetAVASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
     ),
@@ -428,6 +430,7 @@ class ASRTask(AbsTask):
     ) -> Tuple[str, ...]:
         MAX_REFERENCE_NUM = 4
         retval = []
+        retval += ["video"]
         retval += ["text_spk{}".format(n) for n in range(2, MAX_REFERENCE_NUM + 1)]
         retval = tuple(retval)
         assert check_return_type(retval)
