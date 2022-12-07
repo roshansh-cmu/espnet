@@ -76,12 +76,16 @@ class EncoderDump:
         # Input as audio signal
         if isinstance(speech, np.ndarray):
             speech = torch.tensor(speech)
-        full_speech = speech 
+        full_speech = speech
         full_out = []
         for index in range(0, len(full_speech), self.maxlen):
             # data: (Nsamples,) -> (1, Nsamples)
-            speech = full_speech[index:index+self.maxlen] if index+self.maxlen < len(full_speech) else full_speech[index:]
-            if len(full_speech) - (index+self.maxlen) < 4000:
+            speech = (
+                full_speech[index : index + self.maxlen]
+                if index + self.maxlen < len(full_speech)
+                else full_speech[index:]
+            )
+            if len(full_speech) - (index + self.maxlen) < 4000:
                 speech = full_speech[index:]
                 index = len(full_speech)
             speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
@@ -100,7 +104,7 @@ class EncoderDump:
                 enc, _ = self.asr_model._extract_feats(**batch)
             assert len(enc) == 1, len(enc)
             full_out.append(enc.detach().cpu())
-            del enc 
+            del enc
             torch.cuda.empty_cache()
 
             if index >= len(full_speech):
@@ -216,7 +220,7 @@ def dump(
 
     #     # shutil.copy(fout_ark, fout_ark.replace("feats.", "feats_bak."))
     #     # with open(fout_scp.replace("feats.", "feats_bak."), "w") as f:
-    #     #    f.write("\n".join(old_scp))    
+    #     #    f.write("\n".join(old_scp))
     fout_scp = os.path.join(output_dir, f"feats.{index}.scp")
 
     print(f"Writing into {fout_scp} {fout_ark}")

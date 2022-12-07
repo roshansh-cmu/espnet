@@ -13,7 +13,18 @@ from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
 from espnet.nets.pytorch_backend.conformer.convolution import ConvolutionModule
 from espnet.nets.pytorch_backend.conformer.encoder_layer import EncoderLayer
 from espnet.nets.pytorch_backend.nets_utils import get_activation, make_pad_mask
-from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
+from espnet.nets.pytorch_backend.transformer.embedding import (  # noqa: H301
+    LegacyRelPositionalEncoding,
+)
+from espnet.nets.pytorch_backend.transformer.embedding import (  # noqa: H301
+    PositionalEncoding,
+)
+from espnet.nets.pytorch_backend.transformer.embedding import (  # noqa: H301
+    RelPositionalEncoding,
+)
+from espnet.nets.pytorch_backend.transformer.embedding import (  # noqa: H301
+    ScaledPositionalEncoding,
+)
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.multi_layer_conv import (
     Conv1dLinear,
@@ -114,6 +125,15 @@ class LongformerEncoder(ConformerEncoder):
 
         if pos_enc_layer_type == "abs_pos":
             pos_enc_class = PositionalEncoding
+        elif pos_enc_layer_type == "scaled_abs_pos":
+            pos_enc_class = ScaledPositionalEncoding
+        elif pos_enc_layer_type == "rel_pos":
+            pos_enc_class = RelPositionalEncoding
+        elif pos_enc_layer_type == "legacy_rel_pos":
+            pos_enc_class = LegacyRelPositionalEncoding
+            logging.warning(
+                "Using legacy_rel_pos and it will be deprecated in the future."
+            )
         else:
             raise ValueError(
                 "incorrect or unknown pos_enc_layer: "
@@ -225,7 +245,6 @@ class LongformerEncoder(ConformerEncoder):
             raise NotImplementedError("Support only linear or conv1d.")
         self.selfattention_layer_type = selfattention_layer_type
         if selfattention_layer_type == "lf_selfattn":
-            assert pos_enc_layer_type == "abs_pos"
             from longformer.longformer import LongformerConfig
 
             from espnet.nets.pytorch_backend.transformer.longformer_attention import (
@@ -321,17 +340,37 @@ class LongformerEncoder(ConformerEncoder):
             xs_pad = self.embed(xs_pad)
 
         if self.selfattention_layer_type == "lf_selfattn":
-            seq_len = xs_pad.shape[1]
-            attention_window = (
-                max([x.self_attn.attention_window for x in self.encoders]) * 2
-            )
-            padding_len = (
-                attention_window - seq_len % attention_window
-            ) % attention_window
-            xs_pad = torch.nn.functional.pad(
-                xs_pad, (0, 0, 0, padding_len), "constant", 0
-            )
-            masks = torch.nn.functional.pad(masks, (0, padding_len), "constant", False)
+            if self.pos_enc_layer_type == "abs_pos":
+                seq_len = xs_pad.shape[1]
+                attention_window = (
+                    max([x.self_attn.block_size for x in self.encoders]) * 2
+                )
+                padding_len = (
+                    attention_window - seq_len % attention_window
+                ) % attention_window
+                xs_pad = torch.nn.functional.pad(
+                    xs_pad, (0, 0, 0, padding_len), "constant", 0
+                )
+                masks = torch.nn.functional.pad(
+                    masks, (0, padding_len), "constant", False
+                )
+            else:
+                seq_len = xs_pad[0].shape[1]
+                attention_window = (
+                    max([x.self_attn.attention_window for x in self.encoders]) * 2
+                )
+                padding_len = (
+                    attention_window - seq_len % attention_window
+                ) % attention_window
+                masks = torch.nn.functional.pad(
+                    masks, (0, padding_len), "constant", False
+                )
+                xs_pad = (
+                    torch.nn.functional.pad(
+                        xs_pad[0], (0, 0, 0, padding_len), "constant", 0
+                    ),
+                    xs_pad[1],
+                )
 
         xs_pad, masks = self.encoders(xs_pad, masks)
         intermediate_outs = []
