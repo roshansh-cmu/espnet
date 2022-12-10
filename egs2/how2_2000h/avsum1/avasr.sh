@@ -1059,8 +1059,8 @@ if ! "${skip_train}"; then
 
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${_scp},speech,${_type} "
         _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/${_scp},speech,${_type} "
-        _opts+="--train_data_path_and_name_and_type "${_asr_train_dir}/video.scp,video,kaldi_ark"
-        _opts+="--valid_data_path_and_name_and_type "${_asr_valid_dir}/video.scp,video,kaldi_ark"
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/video.scp,video,kaldi_ark "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/video.scp,video,kaldi_ark "
 
         # shellcheck disable=SC2068
         for i in ${!ref_text_files[@]}; do
@@ -1165,7 +1165,7 @@ if ! "${skip_train}"; then
 
             _opts+="--train_data_path_and_name_and_type ${_split_dir}/${_scp},speech,${_type} "
             _opts+="--train_shape_file ${_split_dir}/speech_shape "
-            _opts+="--train_data_path_and_name_and_type ${_split_dir}/video.scp,video,kaldi_ark" 
+            _opts+="--train_data_path_and_name_and_type ${_split_dir}/video.scp,video,kaldi_ark " 
 
 
             # shellcheck disable=SC2068
@@ -1225,8 +1225,8 @@ if ! "${skip_train}"; then
                 --g2p "${g2p}" \
                 --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
                 --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
-                --valid_data_path_and_name_and_type "${_asr_valid_dir}/video.scp,video,kaldi_ark" \ 
-                --resume true \
+                --valid_data_path_and_name_and_type "${_asr_valid_dir}/video.scp,video,kaldi_ark" \
+	--resume true \
                 ${pretrained_model:+--init_param $pretrained_model} \
                 --ignore_init_mismatch ${ignore_init_mismatch} \
                 --fold_length "${_fold_length}" \
@@ -1366,6 +1366,7 @@ if ! "${skip_eval}"; then
                     --batch_size ${batch_size} \
                     --ngpu "${_ngpu}" \
                     --data_path_and_name_and_type "${_data}/${_scp},speech,${_type}" \
+                    --data_path_and_name_and_type "${_data}/video.scp,video,kaldi_ark" \
                     --key_file "${_logdir}"/keys.JOB.scp \
                     --asr_train_config "${asr_exp}"/config.yaml \
                     --asr_model_file "${asr_exp}"/"${inference_asr_model}" \

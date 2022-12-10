@@ -4,9 +4,9 @@ set -e
 set -u
 set -o pipefail
 
-train_set="tr_2000h_sum_trim"
-valid_set="cv05_sum_trim"
-test_sets="dev5_test_sum"
+train_set="tr_2000h_avsum"
+valid_set="cv05_avsum"
+test_sets="dev5_test_avsum"
 
 asr_config=conf/train_sum_conformer_lf.yaml
 inference_config=conf/decode_sum.yaml

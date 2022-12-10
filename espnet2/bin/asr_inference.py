@@ -34,6 +34,8 @@ from espnet.nets.scorer_interface import BatchScorerInterface
 from espnet.nets.scorers.ctc import CTCPrefixScorer
 from espnet.nets.scorers.length_bonus import LengthBonus
 from espnet.utils.cli_utils import get_commandline_args
+from espnet2.asr.espnet_model_av import ESPnetAVASRModel
+
 
 try:
     from transformers import AutoModelForSeq2SeqLM
@@ -309,7 +311,7 @@ class Speech2Text:
 
     @torch.no_grad()
     def __call__(
-        self, speech: Union[torch.Tensor, np.ndarray]
+        self, speech: Union[torch.Tensor, np.ndarray],video: Union[torch.Tensor, np.ndarray]
     ) -> List[
         Tuple[
             Optional[str],
@@ -331,12 +333,16 @@ class Speech2Text:
         # Input as audio signal
         if isinstance(speech, np.ndarray):
             speech = torch.tensor(speech)
+        if isinstance(video, np.ndarray):
+            video = torch.tensor(video)
 
         # data: (Nsamples,) -> (1, Nsamples)
         speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
         # lengths: (1,)
         lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
         batch = {"speech": speech, "speech_lengths": lengths}
+        if video is not None and isinstance(self.asr_model,ESPnetAVASRModel):
+            batch["video"] = video.unsqueeze(0).to(getattr(torch, self.dtype))
         logging.info("speech length: " + str(speech.size(1)))
 
         # a. To device
@@ -374,6 +380,7 @@ class Speech2Text:
             assert len(enc) == 1, len(enc)
 
             # c. Passed the encoder result and the beam search
+            print(enc[0].device)
             results = self._decode_single_sample(enc[0])
             assert check_return_type(results)
 

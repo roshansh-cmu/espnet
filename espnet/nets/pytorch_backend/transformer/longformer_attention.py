@@ -22,10 +22,11 @@ class LongformerAttention(nn.Module):
         """
         super().__init__()
         self.attention_window = config.attention_window[layer_id]
+        print(config.attention_dilation, config.attention_window)
         self.attention_layer = LongformerSelfAttention(config, layer_id=layer_id)
         self.attention = None
 
-    def forward(self, query, key, value, mask):
+    def forward(self, query, key, value, pos_emb=None,mask=None):
         """Compute Longformer Self-Attention with masking.
 
         Expects `len(hidden_states)` to be multiple of `attention_window`.
