@@ -43,7 +43,7 @@ decoder_conf:
     self_attention_dropout_rate: 0.1
     src_attention_dropout_rate: 0.1
 
-model:espnet_av
+model: espnet_av
 model_conf:
     ctc_weight: 0.3
     lsm_weight: 0.1
