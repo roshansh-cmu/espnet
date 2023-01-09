@@ -130,6 +130,8 @@ class ConformerEncoder(AbsEncoder):
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
         stochastic_depth_rate: Union[float, List[float]] = 0.0,
+        layer_drop_rate: float = 0.0,
+        max_pos_emb_len: int = 5000,
         act_fun: str = "relu",
         cos_reweight: bool = True,
     ):
@@ -231,49 +233,49 @@ class ConformerEncoder(AbsEncoder):
                 torch.nn.Linear(input_size, output_size),
                 torch.nn.LayerNorm(output_size),
                 torch.nn.Dropout(dropout_rate),
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer == "conv2d":
             self.embed = Conv2dSubsampling(
                 input_size,
                 output_size,
                 dropout_rate,
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer == "conv2d2":
             self.embed = Conv2dSubsampling2(
                 input_size,
                 output_size,
                 dropout_rate,
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer == "conv2d6":
             self.embed = Conv2dSubsampling6(
                 input_size,
                 output_size,
                 dropout_rate,
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer == "conv2d8":
             self.embed = Conv2dSubsampling8(
                 input_size,
                 output_size,
                 dropout_rate,
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer == "embed":
             self.embed = torch.nn.Sequential(
                 torch.nn.Embedding(input_size, output_size, padding_idx=padding_idx),
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif isinstance(input_layer, torch.nn.Module):
             self.embed = torch.nn.Sequential(
                 input_layer,
-                pos_enc_class(output_size, positional_dropout_rate),
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
             )
         elif input_layer is None:
             self.embed = torch.nn.Sequential(
-                pos_enc_class(output_size, positional_dropout_rate)
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len)
             )
         else:
             raise ValueError("unknown input_layer: " + input_layer)
@@ -495,6 +497,7 @@ class ConformerEncoder(AbsEncoder):
                 concat_after,
                 stochastic_depth_rate[lnum],
             ),
+            layer_drop_rate,
         )
         if self.normalize_before:
             self.after_norm = LayerNorm(output_size)
