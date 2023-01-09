@@ -25,7 +25,7 @@ class LongformerAttention(nn.Module):
         self.attention_layer = LongformerSelfAttention(config, layer_id=layer_id)
         self.attention = None
 
-    def forward(self, query, key, value, mask):
+    def forward(self, query, key, value,pos_emb, mask):
         """Compute Longformer Self-Attention with masking.
 
         Expects `len(hidden_states)` to be multiple of `attention_window`.
@@ -46,6 +46,7 @@ class LongformerAttention(nn.Module):
         attention_mask = mask.int()
         attention_mask[mask == 0] = -1
         attention_mask[mask == 1] = 0
+        print(attention_mask.shape,mask.shape,attention_mask.dtype)
         output, self.attention = self.attention_layer(
             hidden_states=query,
             attention_mask=attention_mask.unsqueeze(1),

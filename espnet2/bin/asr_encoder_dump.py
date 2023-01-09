@@ -43,6 +43,7 @@ class EncoderDump:
         device: str = "cpu",
         dtype: str = "float32",
         mode: str = "frontend",
+        feats_type: str = "multilayer",
     ):
         assert check_argument_types()
 
@@ -58,6 +59,13 @@ class EncoderDump:
         self.device = device
         self.dtype = dtype
         self.mode = mode
+        self.feats_type = feats_type
+        from s3prl.nn import S3PRLUpstream
+
+        self.s3prl_model = S3PRLUpstream("hubert_large_ll60k")
+        print(
+            f"Num Layers {self.s3prl_model.num_layers} Hidden Sizes {self.s3prl_model.hidden_sizes} Downsample Factor {self.s3prl_model.downsample_rates}"
+        )
         self.maxlen = 160000
 
     @torch.no_grad()
@@ -90,7 +98,7 @@ class EncoderDump:
                 index = len(full_speech)
             speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
             # lengths: (1,)
-            logging.info(f"speech shape: {speech.shape}")
+            # logging.info(f"speech shape: {speech.shape}")
             lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
             batch = {"speech": speech, "speech_lengths": lengths}
 
@@ -98,10 +106,16 @@ class EncoderDump:
             batch = to_device(batch, device=self.device)
 
             # b. Forward Encoder
-            if self.mode != "frontend":
-                enc, _ = self.asr_model.encode(**batch)
-            else:
-                enc, _ = self.asr_model._extract_feats(**batch)
+            if self.feats_type == "last":
+                if self.mode != "frontend":
+                    enc, _ = self.asr_model.encode(**batch)
+                else:
+                    enc, _ = self.asr_model._extract_feats(**batch)
+            elif self.feats_type == "multilayer":
+                enc, _ = self.s3prl_model(speech, lengths)
+                # print(f"Shapes {[x.shape for x in enc]} {len(enc)}")
+                enc = torch.stack(enc, dim=1)
+                # print(f"After stack {enc.shape}")
             assert len(enc) == 1, len(enc)
             full_out.append(enc.detach().cpu())
             del enc
@@ -109,8 +123,9 @@ class EncoderDump:
 
             if index >= len(full_speech):
                 break
-
-        return torch.cat(full_out, dim=1)
+        output = torch.cat(full_out, dim=2).squeeze(0)
+        # print("Output shape", output.shape)
+        return output
 
     @staticmethod
     def from_pretrained(
@@ -158,6 +173,7 @@ def dump(
     model_tag: Optional[str],
     allow_variable_data_keys: bool = False,
     mode: str = "frontend",
+    feats_type: str = "multilayer",
     dump_dir: str = None,
 ):
     assert check_argument_types()
@@ -208,19 +224,6 @@ def dump(
     dump_dir = dump_dir if dump_dir is not None else output_dir
     index = key_file.replace(".scp", "").split(".")[-1]
     fout_ark = os.path.join(dump_dir, f"feats.{index}.ark")
-    fout_scp = os.path.join(dump_dir, f"feats.scp")
-    done_list = []
-    # if os.path.exists(fout_scp):
-    #     with open(fout_scp, "r") as f:
-    #         lines = f.readlines()
-    #         # done_list = [line.strip().split(" ")[0] for line in lines]
-    #     done_list = []
-    #     #    old_scp = [line.replace("feats.", "feats_bak.") for line in lines]
-    #     # import shutil
-
-    #     # shutil.copy(fout_ark, fout_ark.replace("feats.", "feats_bak."))
-    #     # with open(fout_scp.replace("feats.", "feats_bak."), "w") as f:
-    #     #    f.write("\n".join(old_scp))
     fout_scp = os.path.join(output_dir, f"feats.{index}.scp")
 
     print(f"Writing into {fout_scp} {fout_ark}")
@@ -230,12 +233,10 @@ def dump(
             assert all(isinstance(s, str) for s in keys), keys
             _bs = len(next(iter(batch.values())))
             assert len(keys) == _bs, f"{len(keys)} != {_bs}"
-            if len(done_list) > 1 and keys[0] in done_list:
-                logging.info(f"Skipped {keys[0]}")
-                continue
             batch = {k: v[0] for k, v in batch.items() if not k.endswith("_lengths")}
             try:
                 enc_output = encoder_dump(**batch)
+                print(f"Output shape {enc_output.shape}")
                 for key, enc_output in zip(keys, enc_output):
                     writer(key, enc_output.cpu().numpy())
                 if i % 10000 == 0:
@@ -318,6 +319,9 @@ def get_parser():
 
     group.add_argument(
         "--mode", type=str, choices=["frontend", "encoder"], default="frontend"
+    )
+    group.add_argument(
+        "--feats_type", type=str, choices=["last", "multilayer"], default="last"
     )
     group.add_argument("--key_file", type=str_or_none)
     group.add_argument("--dump_dir", type=str_or_none)

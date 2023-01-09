@@ -25,6 +25,30 @@ from espnet.nets.pytorch_backend.transformer.embedding import (
     RelPositionalEncoding,
     ScaledPositionalEncoding,
 )
+
+from espnet.nets.pytorch_backend.transformer.cosformer_attention import (
+    CosformerAttention,  # noqa: H301
+    NormAttention,  # noqa: H301
+)
+from espnet.nets.pytorch_backend.transformer.xnor_attention import (
+    ModifiedSoftmaxAttention,
+    ModifiedXNorAttention,
+    XNorAttention,  # noqa: H301
+    SoftmaxAttention,  # noqa: H301
+    XNorRelPosAttention,  # noqa: H301,
+    XNorCosAttention,  # noqa: H301,
+    XNorReNormAttention,  # noqa: H301
+    XNorRopeAttention,  # noqa: H301
+    XNorCosPosAttention,  # noqa: H301
+    XNorNonormAttention,  # noqa: H301
+)
+from espnet.nets.pytorch_backend.transformer.wxnor_attention import (
+    WeightedXNorAttention,  # noqa: H301,
+    WeightedXNorCosAttention,  # noqa: H301
+    WeightedXNorRopeAttention,  # noqa: H301
+    WeightedXNorWeightedCosAttention,  # noqa: H301
+)
+
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.multi_layer_conv import (
     Conv1dLinear,
@@ -106,6 +130,8 @@ class ConformerEncoder(AbsEncoder):
         interctc_layer_idx: List[int] = [],
         interctc_use_conditioning: bool = False,
         stochastic_depth_rate: Union[float, List[float]] = 0.0,
+        act_fun: str = "relu",
+        cos_reweight: bool = True,
     ):
         assert check_argument_types()
         super().__init__()
@@ -128,10 +154,71 @@ class ConformerEncoder(AbsEncoder):
         elif pos_enc_layer_type == "scaled_abs_pos":
             pos_enc_class = ScaledPositionalEncoding
         elif pos_enc_layer_type == "rel_pos":
-            assert selfattention_layer_type == "rel_selfattn"
+            assert selfattention_layer_type in [
+                "rel_selfattn",
+                "cos_selfattn",
+                "norm_selfattn",
+                "xnor_selfattn",
+                "wxnor_selfattn",
+                "xnor_relpos_selfattn",
+                "xnor_nonorm_selfattn",
+                "softmax_selfattn",
+                "xnor_cos_selfattn",
+                "xnor_renorm_selfattn",
+                "wxnor_cos_selfattn",
+                "wxnor_wcos_selfattn",
+                "xnor_rope_selfattn",
+                "wxnor_rope_selfattn",
+                "modified_softmax_selfattn",
+                "modified_xnor_selfattn",
+            ]
             pos_enc_class = RelPositionalEncoding
         elif pos_enc_layer_type == "legacy_rel_pos":
-            assert selfattention_layer_type == "legacy_rel_selfattn"
+            assert selfattention_layer_type in [
+                "legacy_rel_selfattn",
+                "cos_selfattn",
+                "norm_selfattn",
+                "xnor_selfattn",
+                "wxnor_selfattn",
+                "xnor_relpos_selfattn",
+                "softmax_selfattn",
+                "xnor_nonorm_selfattn",
+                "xnor_cos_selfattn",
+                "xnor_renorm_selfattn",
+                "wxnor_cos_selfattn",
+                "wxnor_wcos_selfattn",
+                "xnor_rope_selfattn",
+                "wxnor_rope_selfattn",
+                "modified_softmax_selfattn",
+                "modified_xnor_selfattn",
+            ]
+            pos_enc_class = LegacyRelPositionalEncoding
+            logging.warning(
+                "Using legacy_rel_pos and it will be deprecated in the future."
+            )
+        elif pos_enc_layer_type == "legacy_rel_pos":
+            assert selfattention_layer_type in [
+                "legacy_rel_selfattn",
+                "cos_selfattn",
+                "norm_selfattn",
+                "xnor_selfattn",
+                "wxnor_selfattn",
+                "xnor_relpos_selfattn",
+                "softmax_selfattn",
+                "xnor_nonorm_selfattn",
+                "xnor_cos_selfattn",
+                "xnor_renorm_selfattn",
+                "wxnor_cos_selfattn",
+                "wxnor_wcos_selfattn",
+                "xnor_rope_selfattn",
+                "wxnor_rope_selfattn",
+                "modified_softmax_selfattn",
+                "modified_xnor_selfattn",
+            ]
+            pos_enc_class = LegacyRelPositionalEncoding
+            logging.warning(
+                "Using legacy_rel_pos and it will be deprecated in the future."
+            )
             pos_enc_class = LegacyRelPositionalEncoding
             logging.warning(
                 "Using legacy_rel_pos and it will be deprecated in the future."
@@ -245,6 +332,141 @@ class ConformerEncoder(AbsEncoder):
                 attention_dropout_rate,
                 zero_triu,
             )
+        elif selfattention_layer_type == "cos_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = CosformerAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+                cos_reweight,
+            )
+        elif selfattention_layer_type == "norm_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = NormAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = XNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "modified_xnor_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = ModifiedXNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_nonorm_selfattn":
+            encoder_selfattn_layer = XNorNonormAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "softmax_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = SoftmaxAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "modified_softmax_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = ModifiedSoftmaxAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_cos_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = XNorCosAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "wxnor_cos_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = WeightedXNorCosAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "wxnor_wcos_selfattn":
+            encoder_selfattn_layer = WeightedXNorWeightedCosAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_renorm_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = XNorReNormAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "wxnor_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = WeightedXNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_relpos_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = XNorRelPosAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "xnor_rope_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = XNorRopeAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "wxnor_rope_selfattn":
+            # assert pos_enc_layer_type == "abs_pos"
+            encoder_selfattn_layer = WeightedXNorRopeAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+
         else:
             raise ValueError("unknown encoder_attn_layer: " + selfattention_layer_type)
 

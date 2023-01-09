@@ -17,6 +17,7 @@ dump_dir=
 asr_model_dir=
 cmd=run.pl 
 logdir=
+feats_type=multilayer 
 
 . parse_options.sh || exit 1;
 
@@ -29,6 +30,7 @@ echo $gpu_id $sta $end
 _data=dump/extracted/${dset}
 CUDA_VISIBLE_DEVICES=${gpu_id} ${cmd} JOB=${sta}:${end} "${logdir}/logfiles/${gpu_id}/dump_hubert.JOB.log" \
 	python3 -m espnet2.bin.asr_encoder_dump \
+	--feats_type ${feats_type} \
         --batch_size 1 \
         --ngpu 1 \
 	--key_file ${logdir}/keys.JOB.scp \

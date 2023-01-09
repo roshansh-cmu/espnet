@@ -244,6 +244,7 @@ class LongformerEncoder(ConformerEncoder):
         else:
             raise NotImplementedError("Support only linear or conv1d.")
         self.selfattention_layer_type = selfattention_layer_type
+        self.pos_enc_layer_type = pos_enc_layer_type
         if selfattention_layer_type == "lf_selfattn":
             from longformer.longformer import LongformerConfig
 

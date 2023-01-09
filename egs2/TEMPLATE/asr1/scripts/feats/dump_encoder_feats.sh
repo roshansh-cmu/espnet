@@ -12,6 +12,7 @@ asr_model_dir=
 dump_dir=
 mode=frontend
 feats_dim=1024 
+feats_type=last
 
 . parse_options.sh || exit 1;
 
@@ -61,6 +62,7 @@ if [ $stage -le 3 ]; then
             --dump_dir ${dump_dir}/${dset} \
             --asr_model_dir ${asr_model_dir} \
             --logdir ${logdir} \
+	    --feats_type ${feats_type} \
             --cmd ${cmd}
     done 
         cat ${logdir}/feats.*.scp | LC_ALL=C sort > dump/extracted/${dset}/feats.scp

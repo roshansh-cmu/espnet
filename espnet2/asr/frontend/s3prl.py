@@ -20,6 +20,8 @@ class S3prlFrontend(AbsFrontend):
         frontend_conf: Optional[dict] = get_default_kwargs(Frontend),
         download_dir: str = None,
         multilayer_feature: bool = False,
+        extracted_feature: bool = False,
+        max_seq_len: int = None,
     ):
         try:
             import s3prl
@@ -58,11 +60,21 @@ class S3prlFrontend(AbsFrontend):
         featurizer = Featurizer(upstream)
 
         self.multilayer_feature = multilayer_feature
-        self.upstream, self.featurizer = upstream, featurizer
-        self.pretrained_params = copy.deepcopy(self.upstream.state_dict())
+        self.upstream, self.featurizer = (
+            upstream,
+            featurizer,
+        )
+        self.pretrained_params = (
+            copy.deepcopy(self.upstream.state_dict())
+            if self.upstream is not None
+            else None
+        )
         self.frontend_type = "s3prl"
         self.hop_length = self.featurizer.downsample_rate
         self.tile_factor = frontend_conf.get("tile_factor", 1)
+        self.extracted_feature = extracted_feature
+        self.max_seq_len = max_seq_len
+        logging.warning(f"Featurizer: {self.featurizer}")
 
     def _tile_representations(self, feature):
         """Tile up the representations by `tile_factor`.
@@ -88,17 +100,29 @@ class S3prlFrontend(AbsFrontend):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        feats, feats_lens = self.upstream(input, input_lengths)
+        if not self.extracted_feature:
+            feats, feats_lens = self.upstream(input, input_lengths)
+        else:
+            feats, feats_lens = input, input_lengths
+        logging.warning(f"Feats: {feats.shape}, feats_lengths: {feats_lens.shape}")
+        logging.warning(f"Input: {input.shape} {input_lengths.shape} ")
         if self.multilayer_feature:
             feats, feats_lens = self.featurizer(feats, feats_lens)
         else:
             feats, feats_lens = self.featurizer(feats[-1:], feats_lens[-1:])
 
+        logging.warning(
+            f"Featurized Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
+        )
         if self.tile_factor != 1:
             feats = self._tile_representations(feats)
+
+        if self.max_seq_len:
+            feats = feats[: self.max_seq_len, ::]
 
         return feats, feats_lens
 
     def reload_pretrained_parameters(self):
-        self.upstream.load_state_dict(self.pretrained_params)
-        logging.info("Pretrained S3PRL frontend model parameters reloaded!")
+        if self.upstream is not None:
+            self.upstream.load_state_dict(self.pretrained_params)
+            logging.info("Pretrained S3PRL frontend model parameters reloaded!")
