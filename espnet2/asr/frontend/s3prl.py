@@ -20,12 +20,9 @@ class S3prlFrontend(AbsFrontend):
         frontend_conf: Optional[dict] = get_default_kwargs(Frontend),
         download_dir: str = None,
         multilayer_feature: bool = False,
-<<<<<<< HEAD
         extracted_feature: bool = False,
         max_seq_len: int = None,
-=======
         layer: int = -1,
->>>>>>> master
     ):
         try:
             import s3prl
@@ -74,7 +71,6 @@ class S3prlFrontend(AbsFrontend):
         featurizer = Featurizer(upstream, layer_selections=layer_selections)
 
         self.multilayer_feature = multilayer_feature
-<<<<<<< HEAD
         self.upstream, self.featurizer = (
             upstream,
             featurizer,
@@ -84,11 +80,9 @@ class S3prlFrontend(AbsFrontend):
             if self.upstream is not None
             else None
         )
-=======
         self.layer = layer
         self.upstream, self.featurizer = upstream, featurizer
         self.pretrained_params = copy.deepcopy(self.upstream.state_dict())
->>>>>>> master
         self.frontend_type = "s3prl"
         self.hop_length = self.featurizer.downsample_rate
         self.tile_factor = frontend_conf.get("tile_factor", 1)
@@ -122,8 +116,6 @@ class S3prlFrontend(AbsFrontend):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-<<<<<<< HEAD
-        # logging.warning(f"Input: {input.shape} {input_lengths.shape} ")
 
         if not self.extracted_feature:
             feats, feats_lens = self.upstream(input, input_lengths)
@@ -132,30 +124,20 @@ class S3prlFrontend(AbsFrontend):
             if self.max_seq_len:
                 feats = feats[:, : self.max_seq_len, ::]
                 feats_lens[feats_lens > self.max_seq_len] = self.max_seq_len
+            if self.layer != -1:
+                layer = self.layer
+                feats, feats_lens = feats[layer], feats_lens[layer]
+                return feats, feats_lens
             if self.multilayer_feature:
                 feats = feats.view(feats.size(0), feats.size(1), -1, 1024).permute(
                     2, 0, 1, 3
                 )
-                # logging.warning(
-                #     f"Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
-                # )
                 feats_lens = [feats_lens for _ in range(feats.size(0))]
-=======
-        feats, feats_lens = self.upstream(input, input_lengths)
-        if self.layer != -1:
-            layer = self.layer
-            feats, feats_lens = feats[layer], feats_lens[layer]
-            return feats, feats_lens
-
->>>>>>> master
         if self.multilayer_feature:
             feats, feats_lens = self.featurizer(feats, feats_lens)
         else:
             feats, feats_lens = self.featurizer(feats[-1:], feats_lens[-1:])
 
-        # logging.warning(
-        #     f"Featurized Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
-        # )
         if self.tile_factor != 1:
             feats = self._tile_representations(feats)
 
