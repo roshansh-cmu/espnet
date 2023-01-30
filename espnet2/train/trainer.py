@@ -135,7 +135,7 @@ class Trainer:
             checkpoint,
             map_location=f"cuda:{torch.cuda.current_device()}" if ngpu > 0 else "cpu",
         )
-        model.load_state_dict(states["model"])
+        model.load_state_dict(states["model"],strict=False)
         reporter.load_state_dict(states["reporter"])
         for optimizer, state in zip(optimizers, states["optimizers"]):
             optimizer.load_state_dict(state)

@@ -401,7 +401,7 @@ class ESPnetDataset(AbsDataset):
             if len(self.loader_dict[name]) == 0:
                 raise RuntimeError(f"{path} has no samples")
 
-            # TODO(kamo): Should check consistency of each utt-keys?
+        # TODO(kamo): Should check consistency of each utt-keys?
 
         if isinstance(max_cache_size, str):
             max_cache_size = humanfriendly.parse_size(max_cache_size)

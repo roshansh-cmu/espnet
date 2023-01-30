@@ -75,6 +75,8 @@ class S3prlFrontend(AbsFrontend):
         self.extracted_feature = extracted_feature
         self.max_seq_len = max_seq_len
         logging.warning(f"Featurizer: {self.featurizer}")
+        if extracted_feature:
+            self.upstream = None
 
     def _tile_representations(self, feature):
         """Tile up the representations by `tile_factor`.
@@ -100,20 +102,31 @@ class S3prlFrontend(AbsFrontend):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # logging.warning(f"Input: {input.shape} {input_lengths.shape} ")
+
         if not self.extracted_feature:
             feats, feats_lens = self.upstream(input, input_lengths)
         else:
             feats, feats_lens = input, input_lengths
-        logging.warning(f"Feats: {feats.shape}, feats_lengths: {feats_lens.shape}")
-        logging.warning(f"Input: {input.shape} {input_lengths.shape} ")
+            if self.max_seq_len:
+                feats = feats[:, : self.max_seq_len, ::]
+                feats_lens[feats_lens > self.max_seq_len] = self.max_seq_len
+            if self.multilayer_feature:
+                feats = feats.view(feats.size(0), feats.size(1), -1, 1024).permute(
+                    2, 0, 1, 3
+                )
+                # logging.warning(
+                #     f"Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
+                # )
+                feats_lens = [feats_lens for _ in range(feats.size(0))]
         if self.multilayer_feature:
             feats, feats_lens = self.featurizer(feats, feats_lens)
         else:
             feats, feats_lens = self.featurizer(feats[-1:], feats_lens[-1:])
 
-        logging.warning(
-            f"Featurized Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
-        )
+        # logging.warning(
+        #     f"Featurized Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
+        # )
         if self.tile_factor != 1:
             feats = self._tile_representations(feats)
 

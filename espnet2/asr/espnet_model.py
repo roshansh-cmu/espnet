@@ -304,6 +304,8 @@ class ESPnetASRModel(AbsESPnetModel):
         text_lengths: torch.Tensor,
         **kwargs,
     ) -> Dict[str, torch.Tensor]:
+
+        print("speech", speech.shape)
         if self.extract_feats_in_collect_stats:
             feats, feats_lengths = self._extract_feats(speech, speech_lengths)
         else:
