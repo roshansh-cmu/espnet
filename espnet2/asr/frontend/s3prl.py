@@ -20,8 +20,12 @@ class S3prlFrontend(AbsFrontend):
         frontend_conf: Optional[dict] = get_default_kwargs(Frontend),
         download_dir: str = None,
         multilayer_feature: bool = False,
+<<<<<<< HEAD
         extracted_feature: bool = False,
         max_seq_len: int = None,
+=======
+        layer: int = -1,
+>>>>>>> master
     ):
         try:
             import s3prl
@@ -48,6 +52,8 @@ class S3prlFrontend(AbsFrontend):
         upstream = S3PRLUpstream(
             frontend_conf.get("upstream"),
             path_or_url=frontend_conf.get("path_or_url", None),
+            normalize=frontend_conf.get("normalize", False),
+            extra_conf=frontend_conf.get("extra_conf", None),
         )
         upstream.eval()
         if getattr(
@@ -57,9 +63,18 @@ class S3prlFrontend(AbsFrontend):
             "HubertModel",
         ]:
             upstream.model.encoder.layerdrop = 0.0
-        featurizer = Featurizer(upstream)
+
+        if layer != -1:
+            layer_selections = [layer]
+            assert (
+                not multilayer_feature
+            ), "multilayer feature will be deactivated, when specific layer used"
+        else:
+            layer_selections = None
+        featurizer = Featurizer(upstream, layer_selections=layer_selections)
 
         self.multilayer_feature = multilayer_feature
+<<<<<<< HEAD
         self.upstream, self.featurizer = (
             upstream,
             featurizer,
@@ -69,6 +84,11 @@ class S3prlFrontend(AbsFrontend):
             if self.upstream is not None
             else None
         )
+=======
+        self.layer = layer
+        self.upstream, self.featurizer = upstream, featurizer
+        self.pretrained_params = copy.deepcopy(self.upstream.state_dict())
+>>>>>>> master
         self.frontend_type = "s3prl"
         self.hop_length = self.featurizer.downsample_rate
         self.tile_factor = frontend_conf.get("tile_factor", 1)
@@ -102,6 +122,7 @@ class S3prlFrontend(AbsFrontend):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+<<<<<<< HEAD
         # logging.warning(f"Input: {input.shape} {input_lengths.shape} ")
 
         if not self.extracted_feature:
@@ -119,6 +140,14 @@ class S3prlFrontend(AbsFrontend):
                 #     f"Feats: {feats.shape}, feats_lengths: {feats_lens.shape}"
                 # )
                 feats_lens = [feats_lens for _ in range(feats.size(0))]
+=======
+        feats, feats_lens = self.upstream(input, input_lengths)
+        if self.layer != -1:
+            layer = self.layer
+            feats, feats_lens = feats[layer], feats_lens[layer]
+            return feats, feats_lens
+
+>>>>>>> master
         if self.multilayer_feature:
             feats, feats_lens = self.featurizer(feats, feats_lens)
         else:
