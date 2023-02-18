@@ -620,8 +620,14 @@ if ! "${skip_data_prep}"; then
                     _suf=""
                 fi
                 # Generate dummy wav.scp to avoid error by copy_data_dir.sh
-                <data/"${dset}"/feats.scp awk ' { print($1,"<DUMMY>") }' > data/"${dset}"/wav.scp
-                utils/copy_data_dir.sh --validate_opts --non-print data/"${dset}" "${data_feats}${_suf}/${dset}"
+                if [ ! -f data/"${dset}"/wav.scp ]; then 
+		    if [ ! -f data/"${dset}"/segments ]; then 
+		        <data/"${dset}"/feats.scp awk ' { print($1,"<DUMMY>") }' > data/"${dset}"/wav.scp
+                    else
+		        <data/"${dset}"/segments awk ' { print($2,"<DUMMY>") }' > data/"${dset}"/wav.scp
+		    fi
+		fi
+		utils/copy_data_dir.sh --validate_opts --non-print data/"${dset}" "${data_feats}${_suf}/${dset}"
 
                 # Copy reference text files if there is more than 1 reference
                 # shellcheck disable=SC2068
@@ -1106,6 +1112,10 @@ if ! "${skip_train}"; then
         for i in $(seq "${_nj}"); do
             _opts+="--input_dir ${_logdir}/stats.${i} "
         done
+        if [ "${feats_normalize}" != global_mvn ]; then
+            # Skip summerizaing stats if not using global MVN
+            _opts+="--skip_sum_stats"
+        fi
         # shellcheck disable=SC2086
         ${python} -m espnet2.bin.aggregate_stats_dirs ${_opts} --output_dir "${asr_stats_dir}"
 
