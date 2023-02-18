@@ -456,7 +456,7 @@ class Speech2Text:
                         if hasattr(module, "setup_step"):
                             module.setup_step()
             nbest_hyps = self.beam_search(
-                x=enc.cpu(), maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
+                x=enc, maxlenratio=self.maxlenratio, minlenratio=self.minlenratio
             )
 
         nbest_hyps = nbest_hyps[: self.nbest]
