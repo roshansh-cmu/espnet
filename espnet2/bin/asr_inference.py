@@ -481,6 +481,8 @@ class Speech2Text:
                 text = self.tokenizer.tokens2text(token)
             else:
                 text = None
+            if text  == "":
+                continue 
             results.append((text, token, token_int, hyp))
 
         return results
@@ -674,6 +676,7 @@ def inference(
                 for n, (text, token, token_int, hyp) in zip(
                     range(1, nbest + 1), results
                 ):
+                    
                     # Create a directory: outdir/{n}best_recog
                     ibest_writer = writer[f"{n}best_recog"]
 
@@ -684,6 +687,7 @@ def inference(
 
                     if text is not None:
                         ibest_writer["text"][key] = text
+
 
 
 def get_parser():
