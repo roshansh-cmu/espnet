@@ -47,6 +47,11 @@ from espnet.nets.pytorch_backend.transformer.wxnor_attention import (
     WeightedXNorCosAttention,  # noqa: H301
     WeightedXNorRopeAttention,  # noqa: H301
     WeightedXNorWeightedCosAttention,  # noqa: H301
+    WeightedXNorSigmoidAttention,  # noqa: H301
+    MultiWeightedXNorAttention, # noqa: H301
+    GatedXNorAttention, # noqa: H301
+    TermGatedXNorAttention, # noqa: H301,
+    GatedXNorNoDenomAttention, # noqa: H301
 )
 
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
@@ -174,6 +179,11 @@ class ConformerEncoder(AbsEncoder):
                 "wxnor_rope_selfattn",
                 "modified_softmax_selfattn",
                 "modified_xnor_selfattn",
+                "multiweighted_xnor_selfattn",
+                "wxnor_sigmoid_selfattn",
+                "gated_xnor_selfattn",
+                "gated_xnor_nonorm_selfattn",
+                "termgated_xnor_selfattn"
             ]
             pos_enc_class = RelPositionalEncoding
         elif pos_enc_layer_type == "legacy_rel_pos":
@@ -194,6 +204,12 @@ class ConformerEncoder(AbsEncoder):
                 "wxnor_rope_selfattn",
                 "modified_softmax_selfattn",
                 "modified_xnor_selfattn",
+                "multiweighted_xnor_selfattn",
+                "wxnor_sigmoid_selfattn",
+                "gated_xnor_selfattn",
+                "termgated_xnor_selfattn",
+                "gated_xnor_nonorm_selfattn",
+
             ]
             pos_enc_class = LegacyRelPositionalEncoding
             logging.warning(
@@ -217,6 +233,12 @@ class ConformerEncoder(AbsEncoder):
                 "wxnor_rope_selfattn",
                 "modified_softmax_selfattn",
                 "modified_xnor_selfattn",
+                "multiweighted_xnor_selfattn",
+                "wxnor_sigmoid_selfattn",
+                "gated_xnor_selfattn",
+                "termgated_xnor_selfattn",
+                "gated_xnor_nonorm_selfattn",
+
             ]
             pos_enc_class = LegacyRelPositionalEncoding
             logging.warning(
@@ -470,6 +492,48 @@ class ConformerEncoder(AbsEncoder):
         elif selfattention_layer_type == "wxnor_rope_selfattn":
             # assert pos_enc_layer_type == "abs_pos"
             encoder_selfattn_layer = WeightedXNorRopeAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "multiweighted_xnor_selfattn":
+            encoder_selfattn_layer = MultiWeightedXNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "wxnor_sigmoid_selfattn":
+            encoder_selfattn_layer = WeightedXNorSigmoidAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "gated_xnor_selfattn":
+            encoder_selfattn_layer = GatedXNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+
+        elif selfattention_layer_type == "termgated_xnor_selfattn":
+            encoder_selfattn_layer = TermGatedXNorAttention
+            encoder_selfattn_layer_args = (
+                attention_heads,
+                output_size,
+                attention_dropout_rate,
+                act_fun,
+            )
+        
+        elif selfattention_layer_type == "gated_xnor_nonorm_selfattn":
+            encoder_selfattn_layer = GatedXNorNoDenomAttention
             encoder_selfattn_layer_args = (
                 attention_heads,
                 output_size,

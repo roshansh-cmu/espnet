@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple, Union
-
+import time 
 import numpy as np
 import torch
 from kaldiio import WriteHelper
@@ -43,7 +43,7 @@ class EncoderDump:
         device: str = "cpu",
         dtype: str = "float32",
         mode: str = "frontend",
-        feats_type: str = "multilayer",
+        feats_type: str = "last",
     ):
         assert check_argument_types()
 
@@ -60,12 +60,13 @@ class EncoderDump:
         self.dtype = dtype
         self.mode = mode
         self.feats_type = feats_type
-        from s3prl.nn import S3PRLUpstream
-
-        self.s3prl_model = S3PRLUpstream("hubert_large_ll60k")
-        print(
-            f"Num Layers {self.s3prl_model.num_layers} Hidden Sizes {self.s3prl_model.hidden_sizes} Downsample Factor {self.s3prl_model.downsample_rates}"
-        )
+        print(f"Computing {self.feats_type} layer of {self.mode} and ASR model has frontend {self.asr_model.frontend is not None}")
+        if self.feats_type == "multilayer":
+            from s3prl.nn import S3PRLUpstream
+            self.s3prl_model = S3PRLUpstream("wavlm_large")
+            print(
+                f"Num Layers {self.s3prl_model.num_layers} Hidden Sizes {self.s3prl_model.hidden_sizes} Downsample Factor {self.s3prl_model.downsample_rates}"
+            )
         self.maxlen = 160000
 
     @torch.no_grad()
@@ -93,10 +94,11 @@ class EncoderDump:
                 if index + self.maxlen < len(full_speech)
                 else full_speech[index:]
             )
-            if len(full_speech) - (index + self.maxlen) < 4000:
+            if len(full_speech) - (index + self.maxlen) < 8000:
                 speech = full_speech[index:]
                 index = len(full_speech)
-            speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
+                
+            speech = speech.unsqueeze(0).unsqueeze(-1).to(getattr(torch, self.dtype))
             # lengths: (1,)
             # logging.info(f"speech shape: {speech.shape}")
             lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
@@ -112,7 +114,7 @@ class EncoderDump:
                 else:
                     enc, _ = self.asr_model._extract_feats(**batch)
             elif self.feats_type == "multilayer":
-                enc, _ = self.s3prl_model(speech, lengths)
+                enc, _ = self.s3prl_model(speech.squeeze(-1), lengths)
                 # print(f"Shapes {[x.shape for x in enc]} {len(enc)}")
                 enc = torch.stack(enc, dim=-2)
                 # print(f"After stack {enc.shape}")
@@ -120,17 +122,13 @@ class EncoderDump:
                 # print(f"After view {enc.shape}")
             assert len(enc) == 1, len(enc)
             full_out.append(enc.detach().cpu())
-            del enc
             torch.cuda.empty_cache()
-
-            if index >= len(full_speech):
+            del enc 
+            if index >= len(full_speech) or len(full_speech) - index < 2000:
                 break
         output = (
-            torch.cat(full_out, dim=2).squeeze(0)
-            if self.feats_type == "last"
-            else torch.cat(full_out, dim=1).squeeze(0)
+            torch.cat(full_out, dim=1).squeeze(0)
         )
-        print("Output shape", output.shape)
         return output
 
     @staticmethod
@@ -208,7 +206,6 @@ def dump(
         mode=mode,
     )
     encoder_dump = EncoderDump.from_pretrained(
-        model_tag=model_tag,
         **dump_kwargs,
     )
 
@@ -239,19 +236,17 @@ def dump(
             assert all(isinstance(s, str) for s in keys), keys
             _bs = len(next(iter(batch.values())))
             assert len(keys) == _bs, f"{len(keys)} != {_bs}"
+            logging.info(f"Key {keys[0]}")
+            st_time = time.time()
             batch = {k: v[0] for k, v in batch.items() if not k.endswith("_lengths")}
             try:
                 enc_output = encoder_dump(**batch)
                 enc_output = enc_output.cpu().numpy()
                 print(f"Output shape {enc_output.shape}")
-
-                # with open(os.path.join(dump_dir, f"{keys[0]}.npy"), "wb") as f:
-                #     np.save(f, enc_output)
-                # writer.write(f"{keys[0]} {dump_dir}/{keys[0]}.npy\n")
                 writer(keys[0], enc_output)
-                if i % 10 == 0:
+                if i % 1 == 0:
                     logging.info(f"Wrote {i}")
-
+                logging.info(f"Key {keys[0]} processed in {time.time()-st_time} seconds.")
             except TooShortUttError as e:
                 logging.warning(f"Utterance {keys} {e}")
             i += 1

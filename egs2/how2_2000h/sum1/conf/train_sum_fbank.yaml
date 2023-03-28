@@ -1,0 +1,100 @@
+# This configuration requires Tesla V100-SXM2(32GB) x 8 GPUs It takes about 4 days.
+
+batch_type: length
+batch_bins: 900000000
+accum_grad: 1
+max_epoch: 50
+
+patience: 15
+
+init: xavier_uniform 
+early_stopping_criterion:
+- valid
+- acc
+- max
+
+val_scheduler_criterion:
+- valid
+- acc
+
+best_model_criterion:
+-   - valid
+    - acc
+    - max
+
+keep_nbest_models: 10
+log_interval: 5000
+
+encoder: conformer
+encoder_conf:
+    output_size: 512
+    attention_heads: 8
+    linear_units: 1024
+    num_blocks: 6
+    dropout_rate: 0.2
+    positional_dropout_rate: 0.2
+    attention_dropout_rate: 0.2
+    input_layer: conv2d8
+    normalize_before: true
+    macaron_style: true
+    pos_enc_layer_type: "rel_pos"
+    selfattention_layer_type: "rel_selfattn"
+    activation_type: "swish"
+    use_cnn_module:  true
+    cnn_module_kernel: 31
+
+decoder: transformer
+decoder_conf:
+    attention_heads: 4
+    linear_units: 512
+    num_blocks: 6
+    dropout_rate: 0.2
+    positional_dropout_rate: 0.2
+    self_attention_dropout_rate: 0.2
+    src_attention_dropout_rate: 0.2
+
+model_conf:
+    ctc_weight: 0.0
+    lsm_weight: 0.15
+    length_normalized_loss: false
+    extract_feats_in_collect_stats: false
+
+optim: adam
+optim_conf:
+    lr: 0.001
+
+scheduler: reducelronplateau
+scheduler_conf: 
+        mode: max
+        factor: 0.85
+        patience: 2
+        
+
+unused_parameters: False 
+
+specaug: specaug
+specaug_conf:
+    apply_time_warp: true
+    time_warp_window: 5
+    time_warp_mode: bicubic
+    apply_freq_mask: true
+    freq_mask_width_range:
+        - 0
+        - 30
+    num_freq_mask: 2
+    apply_time_mask: true
+    time_mask_width_range:
+        - 0
+        - 40
+    num_time_mask: 2
+
+
+frontend: default 
+frontend_conf:
+  n_fft: 512
+  hop_length: 256
+  audio_clip: 480000
+
+normalize: utterance_mvn
+
+

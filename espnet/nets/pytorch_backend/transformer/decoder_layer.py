@@ -60,7 +60,8 @@ class DecoderLayer(nn.Module):
             self.concat_linear1 = nn.Linear(size + size, size)
             self.concat_linear2 = nn.Linear(size + size, size)
 
-    def forward(self, tgt, tgt_mask, memory, memory_mask, cache=None):
+    def forward(self, tgt, tgt_mask, memory, memory_mask, cache=None,context=None,
+        context_mask=None):
         """Compute decoded features.
 
         Args:

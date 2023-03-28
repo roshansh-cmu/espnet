@@ -48,7 +48,7 @@ class DatadirWriter:
         if self.has_children:
             raise RuntimeError("This writer points out a directory")
         if key in self.keys:
-            warnings.warn(f"Duplicated: {key}")
+            warnings.warn("Duplicated: {}".format(key))
 
         if self.fd is None:
             self.path.parent.mkdir(parents=True, exist_ok=True)

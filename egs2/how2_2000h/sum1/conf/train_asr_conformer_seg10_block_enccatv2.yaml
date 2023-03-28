@@ -1,0 +1,111 @@
+# This configuration requires Tesla V100-SXM2(32GB) x 16 GPUs It takes about 1.5 days
+batch_type: length
+batch_bins: 760000
+accum_grad: 1
+max_epoch: 50
+patience: 10
+init: none
+
+val_scheduler_criterion:
+- valid
+- final_acc
+
+early_stopping_criterion:
+- valid
+- final_acc
+- max
+
+best_model_criterion:
+-   - valid
+    - final_acc
+    - max
+-   - valid
+    - block_1_acc
+    - max
+-   - valid
+    - block_0_acc
+    - max
+-   - valid
+    - acc
+    - max
+
+keep_nbest_models: 2
+log_interval: 7000
+
+encoder: block_conformer
+encoder_conf:
+    output_size: 512
+    attention_heads: 8
+    linear_units: 2048
+    num_blocks: 12
+    dropout_rate: 0.15
+    positional_dropout_rate: 0.15
+    attention_dropout_rate: 0.15
+    input_layer: conv2d
+    normalize_before: true
+    macaron_style: true
+    pos_enc_layer_type: "rel_pos"
+    selfattention_layer_type: "rel_selfattn"
+    activation_type: "swish"
+    use_cnn_module:  true
+    cnn_module_kernel: 31
+
+decoder: transformer
+decoder_conf:
+    attention_heads: 8
+    linear_units: 2048
+    num_blocks: 6
+    dropout_rate: 0.15
+    positional_dropout_rate: 0.15
+    self_attention_dropout_rate: 0.15
+    src_attention_dropout_rate: 0.15
+
+block_size: 1000
+
+model: block_summ
+model_conf:
+    ctc_weight: 0.0
+    lsm_weight: 0.1
+    length_normalized_loss: false
+    enc_context: concatv2
+    block_length: 2
+    dec_context: null
+    encoder_prompt: false
+
+optim: adam
+optim_conf:
+    lr: 0.0008
+
+scheduler: reducelronplateau
+scheduler_conf:
+        mode: max
+        factor: 0.5
+        patience: 3
+
+    #scheduler: warmuplr
+    #scheduler_conf:
+    #warmup_steps: 1000
+
+    #ctc_conf:
+    #    ignore_nan_grad: true
+    
+unused_parameters: false
+#frontend_conf:
+#  n_fft: 512
+#  hop_length: 256
+
+#specaug: specaug
+#specaug_conf:
+#    apply_time_warp: true
+#    time_warp_window: 5
+#    time_warp_mode: bicubic
+#    apply_freq_mask: true
+#    freq_mask_width_range:
+#    - 0
+#    - 30
+#    num_freq_mask: 2
+    #    apply_time_mask: true
+    #    time_mask_width_range:
+    #    - 0
+    #    - 40
+    #    num_time_mask: 2

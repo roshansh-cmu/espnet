@@ -558,6 +558,7 @@ def inference(
     hugging_face_decoder_max_length: int,
     time_sync: bool,
     multi_asr: bool,
+    audio_clip:int
 ):
     assert check_argument_types()
     if batch_size > 1:
@@ -638,6 +639,8 @@ def inference(
             _bs = len(next(iter(batch.values())))
             assert len(keys) == _bs, f"{len(keys)} != {_bs}"
             batch = {k: v[0] for k, v in batch.items() if not k.endswith("_lengths")}
+            if audio_clip is not None:
+                batch["speech"] = batch["speech"][:audio_clip]
 
             # N-best list of (text, token, token_int, hyp_object)
             try:
@@ -790,6 +793,12 @@ def get_parser():
         type=str2bool,
         default=False,
         help="multi-speaker asr model",
+    )
+    group.add_argument(
+        "--audio_clip",
+        type=int,
+        default=960000,
+        help="The block size for inference",
     )
 
     group = parser.add_argument_group("Quantization related")

@@ -33,10 +33,11 @@ class WeightedXNorCosAttention(XNorAttention):
         vdim=None,
         causal=False,
         has_outproj=True,
-        zero_triu=False,
     ):
         super().__init__(n_head, n_feat)
         self.weights = torch.nn.Parameter(torch.FloatTensor([0.5, 0.5]))
+        self.register_parameter("xnor_weights",self.weights)
+        
 
     def get_index(self, seq_len):
         index = np.pi / 2 * torch.arange(1, seq_len + 1).reshape(1, -1, 1)
@@ -411,6 +412,7 @@ class WeightedXNorAttention(XNorAttention):
         super().__init__(n_head, n_feat)
 
         self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        self.register_parameter("xnor_weights",self.weights)
 
     def forward(
         self,
@@ -596,6 +598,667 @@ class WeightedXNorAttention(XNorAttention):
             attn_output = self.linear_out(attn_output)
 
         return attn_output
+
+
+class GatedXNorAttention(XNorAttention):
+    """
+    Gated XNorm attention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate=0.0,
+        act_fun="relu",
+        kdim=None,
+        vdim=None,
+        causal=False,
+        has_outproj=True,
+        zero_triu=False,
+    ):
+        super().__init__(n_head, n_feat)
+
+        size = n_feat // n_head 
+        self.gater = torch.nn.Linear(2*size, 2)
+        # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        # self.register_parameter("xnor_weights",self.weights)
+
+    def forward(
+        self,
+        query: Tensor,
+        key: Optional[Tensor] = None,
+        value: Optional[Tensor] = None,
+        pos_emb: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        eps: Optional[float] = 1e-6,
+    ):
+        """Input shape: Sequence x Batch x Embedding
+        Args:
+                query (Tensor): `(N,L, E)` where L is the target sequence length, N is the batch size,
+                E is the embedding dimension.
+                key (Tensor): `(N,S, E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                value (Tensor): `(N,S,E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                attn_mask (Optional[Tensor], optional): typically used to implement causal attention,
+                where the mask prevents the attention from looking forward in time (default: None).
+        """
+        if key == None:
+            key = query
+        if value == None:
+            value = query
+
+        n_head = self.n_head
+        bsz, tgt_len, embed_dim = query.size()
+        src_len = key.size(1)
+        head_dim = embed_dim // n_head
+        query = query.view(tgt_len, bsz, embed_dim)
+        key = key.view(src_len, bsz, embed_dim)
+        value = value.view(src_len, bsz, embed_dim)
+
+        # get q, k, v
+        # (L, N, E)
+        q = self.linear_q(query)
+        # (S, N, E)
+        k = self.linear_k(key)
+        # (S, N, E)
+        v = self.linear_v(value)
+
+        # activation
+        # q = self.act_fun(q)
+        # k = self.act_fun(k)
+
+        q = torch.nn.functional.softmax(q.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_q = 1 - q
+        k = torch.nn.functional.softmax(k.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_k = 1 - k
+
+        # multihead reshape
+        # (N * h, L, d)
+        q_ = q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_q_ = comp_q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        k_ = k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_k_ = comp_k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        
+        # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
+        kv_ = torch.einsum("nld,nlm->ndm", k_, v)
+        comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
+        # (N * h, L, 2 * d) (N * h, 2 * d) -> (N * h, L)
+        z_ = 1 / torch.clamp_min(
+            torch.einsum("nld,nd->nl", q_, torch.sum(k_, axis=1)), eps
+        )
+        comp_z_ = 1 / torch.clamp_min(
+            torch.einsum("nld,nd->nl", comp_q_, torch.sum(comp_k_, axis=1)), eps
+        )
+        # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
+        attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
+
+        # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
+        attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
+
+        # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
+        concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
+
+        gating_weights = torch.sigmoid(self.gater(concatenated_output))
+        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape} {wt_2.shape} {wt_1.shape}")
+
+        attn_output = wt_1 * attn_output + wt_2 * attn_output2
+        
+        attn_output = (
+            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+        )
+        # L, N, E
+        if self.has_outproj:
+            attn_output = self.linear_out(attn_output)
+
+        return attn_output.view(bsz, tgt_len, self.n_feat)
+
+
+class GatedXNorNoDenomAttention(XNorAttention):
+    """
+    Gated XNorm No Denom attention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate=0.0,
+        act_fun="relu",
+        kdim=None,
+        vdim=None,
+        causal=False,
+        has_outproj=True,
+        zero_triu=False,
+    ):
+        super().__init__(n_head, n_feat)
+
+        size = n_feat // n_head 
+        self.gater = torch.nn.Linear(2*size, 2)
+        # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        # self.register_parameter("xnor_weights",self.weights)
+
+    def forward(
+        self,
+        query: Tensor,
+        key: Optional[Tensor] = None,
+        value: Optional[Tensor] = None,
+        pos_emb: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        eps: Optional[float] = 1e-6,
+    ):
+        """Input shape: Sequence x Batch x Embedding
+        Args:
+                query (Tensor): `(N,L, E)` where L is the target sequence length, N is the batch size,
+                E is the embedding dimension.
+                key (Tensor): `(N,S, E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                value (Tensor): `(N,S,E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                attn_mask (Optional[Tensor], optional): typically used to implement causal attention,
+                where the mask prevents the attention from looking forward in time (default: None).
+        """
+        if key == None:
+            key = query
+        if value == None:
+            value = query
+
+        n_head = self.n_head
+        bsz, tgt_len, embed_dim = query.size()
+        src_len = key.size(1)
+        head_dim = embed_dim // n_head
+        query = query.view(tgt_len, bsz, embed_dim)
+        key = key.view(src_len, bsz, embed_dim)
+        value = value.view(src_len, bsz, embed_dim)
+
+        # get q, k, v
+        # (L, N, E)
+        q = self.linear_q(query)
+        # (S, N, E)
+        k = self.linear_k(key)
+        # (S, N, E)
+        v = self.linear_v(value)
+
+        # activation
+        # q = self.act_fun(q)
+        # k = self.act_fun(k)
+
+        q = torch.nn.functional.softmax(q.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_q = 1 - q
+        k = torch.nn.functional.softmax(k.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_k = 1 - k
+
+        # multihead reshape
+        # (N * h, L, d)
+        q_ = q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_q_ = comp_q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        k_ = k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_k_ = comp_k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        
+        # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
+        kv_ = torch.einsum("nld,nlm->ndm", k_, v)
+        comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
+        # (N * h, L, 2 * d) (N * h, 2 * d) -> (N * h, L)
+        z = 1 / torch.clamp_min(
+            torch.einsum("nld,nd->nl", q_, torch.sum(k_, axis=1)), eps
+        )
+        # comp_z_ = 1 / torch.clamp_min(
+        #   torch.einsum("nld,nd->nl", comp_q_, torch.sum(comp_k_, axis=1)), eps
+        # )
+        # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
+        z_ = torch.ones_like(z)
+        comp_z_ = torch.ones_like(z)
+        
+        attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
+        if torch.isnan(attn_output).any():
+            logging.warning(f"z_ has NAN")
+
+        # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
+        attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
+
+
+        # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
+        concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
+
+        gating_weights = torch.sigmoid(self.gater(concatenated_output))
+        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape} {wt_2.shape} {wt_1.shape}")
+
+        attn_output = wt_1 * attn_output + wt_2 * attn_output2
+
+        ## Normalize weights 
+        denom = wt_1 + wt_2
+        denom = torch.where(denom == 0.0, torch.ones_like(denom), denom)
+        # attn_output = attn_output / denom
+        
+        attn_output = (
+            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+        )
+        # L, N, E
+        if self.has_outproj:
+            attn_output = self.linear_out(attn_output)
+
+        return attn_output.view(bsz, tgt_len, self.n_feat)
+
+class TermGatedXNorAttention(XNorAttention):
+    """
+    Term Gated XNorm attention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate=0.0,
+        act_fun="relu",
+        kdim=None,
+        vdim=None,
+        causal=False,
+        has_outproj=True,
+        zero_triu=False,
+    ):
+        super().__init__(n_head, n_feat)
+        size = n_feat // n_head 
+        self.gater = torch.nn.Linear(2*size, 2)
+
+        # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        # self.register_parameter("xnor_weights",self.weights)
+
+    def forward(
+        self,
+        query: Tensor,
+        key: Optional[Tensor] = None,
+        value: Optional[Tensor] = None,
+        pos_emb: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        eps: Optional[float] = 1e-6,
+    ):
+        """Input shape: Sequence x Batch x Embedding
+        Args:
+                query (Tensor): `(N,L, E)` where L is the target sequence length, N is the batch size,
+                E is the embedding dimension.
+                key (Tensor): `(N,S, E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                value (Tensor): `(N,S,E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                attn_mask (Optional[Tensor], optional): typically used to implement causal attention,
+                where the mask prevents the attention from looking forward in time (default: None).
+        """
+        if key == None:
+            key = query
+        if value == None:
+            value = query
+
+        n_head = self.n_head
+        bsz, tgt_len, embed_dim = query.size()
+        src_len = key.size(1)
+        head_dim = embed_dim // n_head
+        query = query.view(tgt_len, bsz, embed_dim)
+        key = key.view(src_len, bsz, embed_dim)
+        value = value.view(src_len, bsz, embed_dim)
+
+        # get q, k, v
+        # (L, N, E)
+        q = self.linear_q(query)
+        # (S, N, E)
+        k = self.linear_k(key)
+        # (S, N, E)
+        v = self.linear_v(value)
+
+        # activation
+
+        q = torch.nn.functional.softmax(q.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_q = 1 - q
+        k = torch.nn.functional.softmax(k.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_k = 1 - k
+
+        # multihead reshape
+        # (N * h, L, d)
+        q_ = q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_q_ = comp_q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        k_ = k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_k_ = comp_k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        
+        # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
+        kv_ = torch.einsum("nld,nlm->ndm", k_, v)
+        comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
+        # (N * h, L, 2 * d) (N * h, 2 * d) -> (N * h, L)
+        z_ = 1 / torch.clamp_min(
+            torch.einsum("nld,nd->nl", q_, torch.sum(k_, axis=1)), eps
+        )
+        comp_z_ = 1 / torch.clamp_min(
+            torch.einsum("nld,nd->nl", comp_q_, torch.sum(comp_k_, axis=1)), eps
+        )
+        # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
+        attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
+
+        # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
+        attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
+
+        # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
+        concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
+        concatenated_output = torch.mean(concatenated_output, dim=1)
+        gating_weights = F.sigmoid(self.gater(concatenated_output)).unsqueeze(1).repeat(1,attn_output.shape[1],1)
+        
+        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape}")
+        attn_output = wt_1 * attn_output + wt_2 * attn_output2
+        
+        
+        attn_output = (
+            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+        )
+        # L, N, E
+        if self.has_outproj:
+            attn_output = self.linear_out(attn_output)
+
+        return attn_output.view(bsz, tgt_len, self.n_feat)
+
+
+class WeightedXNorSigmoidAttention(XNorAttention):
+    """
+    Weighted XNorm attention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate=0.0,
+        act_fun="relu",
+        kdim=None,
+        vdim=None,
+        causal=False,
+        has_outproj=True,
+        zero_triu=False,
+    ):
+        super().__init__(n_head, n_feat)
+
+        self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        self.register_parameter("xnor_weights",self.weights)
+        
+
+    def forward(
+        self,
+        query: Tensor,
+        key: Optional[Tensor] = None,
+        value: Optional[Tensor] = None,
+        pos_emb: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        eps: Optional[float] = 1e-6,
+    ):
+        """Input shape: Sequence x Batch x Embedding
+        Args:
+                query (Tensor): `(N,L, E)` where L is the target sequence length, N is the batch size,
+                E is the embedding dimension.
+                key (Tensor): `(N,S, E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                value (Tensor): `(N,S,E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                attn_mask (Optional[Tensor], optional): typically used to implement causal attention,
+                where the mask prevents the attention from looking forward in time (default: None).
+        """
+        if key == None:
+            key = query
+        if value == None:
+            value = query
+        n_head = self.n_head
+        bsz, tgt_len, embed_dim = query.size()
+        src_len = key.size(1)
+        head_dim = embed_dim // n_head
+        query = query.view(tgt_len, bsz, embed_dim)
+        key = key.view(src_len, bsz, embed_dim)
+        value = value.view(src_len, bsz, embed_dim)
+
+        # get q, k, v
+        # (L, N, E)
+        q = self.linear_q(query)
+        # (S, N, E)
+        k = self.linear_k(key)
+        # (S, N, E)
+        v = self.linear_v(value)
+
+        # activation
+        # q = self.act_fun(q)
+        # k = self.act_fun(k)
+
+        q = torch.nn.functional.sigmoid(q.view(tgt_len, bsz, n_head, head_dim))
+        comp_q = 1 - q
+        k = torch.nn.functional.sigmoid(k.view(tgt_len, bsz, n_head, head_dim))
+        comp_k = 1 - k
+
+        # multihead reshape
+        # (N * h, L, d)
+        q_ = q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_q_ = comp_q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        k_ = k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_k_ = comp_k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        if self.causal:
+            ## Need to improve speed!
+            # (N * h, L, 2 * d) (N * h, L, d) -> (N * h, L, h, 2 * d, d)
+            kv_ = torch.einsum("nld,nlm->nlm", k_, v)
+            comp_kv_ = torch.einsum("nld,nlm->nldm", comp_k_, v)
+            # (N * h, L, 2 * d, d) -> (N * h, L, 2 * d, d)
+            kv_cum = torch.cumsum(kv_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d, d) -> (N * h, L, d)
+            qkv = torch.einsum("nld,nldm->nlm", q_, kv_cum)
+            comp_kv_cum = torch.cumsum(comp_kv_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d, d) -> (N * h, L, d)
+            comp_qkv = torch.einsum("nld,nldm->nlm", comp_q_, comp_kv_cum)
+            qkv += comp_qkv
+            # (N * h, L, 2 * d) -> (N * h,  L, 2 * d)
+            # k_cum = torch.cumsum(k_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d) -> (N * h, L)
+            # denom = torch.clamp_min(torch.einsum("nlm,nlm->nl", q_, k_cum), eps)
+            # (N * h, L, d) (N * h, L, 1) -> (N * h, L, d)
+            attn_output = qkv  # / denom.unsqueeze(-1)
+            # (N * h, L, d) -> (L, N * h, d) -> (L, N, E)
+            attn_output = (
+                attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+            )
+        else:
+            # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
+            kv_ = torch.einsum("nld,nlm->ndm", k_, v)
+            comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
+            # (N * h, L, 2 * d) (N * h, 2 * d) -> (N * h, L)
+            z_ = 1 / torch.clamp_min(
+                torch.einsum("nld,nd->nl", q_, torch.sum(k_, axis=1)), eps
+            )
+            comp_z_ = 1 / torch.clamp_min(
+                torch.einsum("nld,nd->nl", comp_q_, torch.sum(comp_k_, axis=1)), eps
+            )
+            # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
+            attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
+
+            # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
+            attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
+
+            # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
+            attn_output = (F.relu(self.weights[0]) * attn_output) + (
+                F.relu(self.weights[1]) * attn_output2
+            )  # (N * h, L, d) -> (L, N * h, d) -> (L, N, E)
+            attn_output = (
+                attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+            )
+        # L, N, E
+        if self.has_outproj:
+            attn_output = self.linear_out(attn_output)
+
+        return attn_output.view(bsz, tgt_len, self.n_feat)
+
+    
+class MultiWeightedXNorAttention(XNorAttention):
+    """
+    Weighted XNorm attention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate=0.0,
+        act_fun="relu",
+        kdim=None,
+        vdim=None,
+        causal=False,
+        has_outproj=True,
+        zero_triu=False,
+    ):
+        super().__init__(n_head, n_feat)
+
+        self.weights = nn.ParameterList([nn.Parameter(torch.randn(n_feat//n_head)) for _ in range(2)])
+        self.register_parameter("xnor_weights_1",self.weights[0])
+        self.register_parameter("xnor_weights_2",self.weights[1])
+        
+        #torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+
+    def forward(
+        self,
+        query: Tensor,
+        key: Optional[Tensor] = None,
+        value: Optional[Tensor] = None,
+        pos_emb: Optional[Tensor] = None,
+        attn_mask: Optional[Tensor] = None,
+        eps: Optional[float] = 1e-6,
+    ):
+        """Input shape: Sequence x Batch x Embedding
+        Args:
+                query (Tensor): `(N,L, E)` where L is the target sequence length, N is the batch size,
+                E is the embedding dimension.
+                key (Tensor): `(N,S, E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                value (Tensor): `(N,S,E)` where S is the source sequence length, N is the batch size,
+                E is the embedding dimension.
+                attn_mask (Optional[Tensor], optional): typically used to implement causal attention,
+                where the mask prevents the attention from looking forward in time (default: None).
+        """
+        if key == None:
+            key = query
+        if value == None:
+            value = query
+        n_head = self.n_head
+        bsz, tgt_len, embed_dim = query.size()
+        src_len = key.size(1)
+        head_dim = embed_dim // n_head
+        query = query.view(tgt_len, bsz, embed_dim)
+        key = key.view(src_len, bsz, embed_dim)
+        value = value.view(src_len, bsz, embed_dim)
+
+        # get q, k, v
+        # (L, N, E)
+        q = self.linear_q(query)
+        # (S, N, E)
+        k = self.linear_k(key)
+        # (S, N, E)
+        v = self.linear_v(value)
+
+        # activation
+        # q = self.act_fun(q)
+        # k = self.act_fun(k)
+
+        q = torch.nn.functional.softmax(q.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_q = 1 - q
+        k = torch.nn.functional.softmax(k.view(tgt_len, bsz, n_head, head_dim), dim=-1)
+        comp_k = 1 - k
+
+        # multihead reshape
+        # (N * h, L, d)
+        q_ = q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_q_ = comp_q.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        k_ = k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+        comp_k_ = comp_k.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        # (N * h, S, d)
+        v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
+
+        if self.causal:
+            ## Need to improve speed!
+            # (N * h, L, 2 * d) (N * h, L, d) -> (N * h, L, h, 2 * d, d)
+            kv_ = torch.einsum("nld,nlm->nlm", k_, v)
+            comp_kv_ = torch.einsum("nld,nlm->nldm", comp_k_, v)
+            # (N * h, L, 2 * d, d) -> (N * h, L, 2 * d, d)
+            kv_cum = torch.cumsum(kv_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d, d) -> (N * h, L, d)
+            qkv = torch.einsum("nld,nldm->nlm", q_, kv_cum)
+            comp_kv_cum = torch.cumsum(comp_kv_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d, d) -> (N * h, L, d)
+            comp_qkv = torch.einsum("nld,nldm->nlm", comp_q_, comp_kv_cum)
+            qkv += comp_qkv
+            # (N * h, L, 2 * d) -> (N * h,  L, 2 * d)
+            # k_cum = torch.cumsum(k_, dim=1)
+            # (N * h, L, 2 * d) (N * h, L, 2 * d) -> (N * h, L)
+            # denom = torch.clamp_min(torch.einsum("nlm,nlm->nl", q_, k_cum), eps)
+            # (N * h, L, d) (N * h, L, 1) -> (N * h, L, d)
+            attn_output = qkv  # / denom.unsqueeze(-1)
+            # (N * h, L, d) -> (L, N * h, d) -> (L, N, E)
+            attn_output = (
+                attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+            )
+        else:
+            # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
+            kv_ = torch.einsum("nld,nlm->ndm", k_, v)
+            comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
+            # (N * h, L, 2 * d) (N * h, 2 * d) -> (N * h, L)
+            z_ = 1 / torch.clamp_min(
+                torch.einsum("nld,nd->nl", q_, torch.sum(k_, axis=1)), eps
+            )
+            comp_z_ = 1 / torch.clamp_min(
+                torch.einsum("nld,nd->nl", comp_q_, torch.sum(comp_k_, axis=1)), eps
+            )
+            # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
+            attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
+
+            # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
+            attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
+
+            # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
+            attn_output = (self.weights[0].unsqueeze(0).unsqueeze(1) * attn_output) + (
+                self.weights[1].unsqueeze(0).unsqueeze(1) * attn_output2
+            )  
+            
+            # (N * h, L, d) -> (L, N * h, d) -> (L, N, E)
+            attn_output = (
+                attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
+            )
+        # L, N, E
+        if self.has_outproj:
+            attn_output = self.linear_out(attn_output)
+
+        return attn_output.view(bsz, tgt_len, self.n_feat)
+
+    
+
 
 
 class RoFormerSinusoidalPositionalEmbedding(nn.Embedding):

@@ -24,6 +24,7 @@ from espnet2.asr.decoder.transformer_decoder import (
 )
 from espnet2.asr.decoder.whisper_decoder import OpenAIWhisperDecoder
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
+from espnet2.asr.encoder.block_encoder import BlockConformerEncoder
 from espnet2.asr.encoder.branchformer_encoder import BranchformerEncoder
 from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
 from espnet2.asr.encoder.contextual_block_conformer_encoder import (
@@ -74,6 +75,7 @@ from espnet2.tasks.abs_task import AbsTask
 from espnet2.text.phoneme_tokenizer import g2p_choices
 from espnet2.torch_utils.initialize import initialize
 from espnet2.train.abs_espnet_model import AbsESPnetModel
+from espnet2.train.blockwise_trainer import BlockTrainer
 from espnet2.train.class_choices import ClassChoices
 from espnet2.train.collate_fn import CommonCollateFn
 from espnet2.train.preprocessor import (
@@ -85,6 +87,7 @@ from espnet2.train.trainer import Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
+from espnet2.asr.decoder.block_decoder import BlockHANTransformerDecoder
 
 frontend_choices = ClassChoices(
     name="frontend",
@@ -123,7 +126,7 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
-        block_asr=ESPnetBlockASRModel,
+        block_summ=ESPnetBlockASRModel,
     ),
     type_check=AbsESPnetModel,
     default="espnet",
@@ -143,6 +146,7 @@ encoder_choices = ClassChoices(
     classes=dict(
         conformer=ConformerEncoder,
         transformer=TransformerEncoder,
+        block_conformer=BlockConformerEncoder,
         transformer_multispkr=TransformerEncoderMultiSpkr,
         contextual_block_transformer=ContextualBlockTransformerEncoder,
         contextual_block_conformer=ContextualBlockConformerEncoder,
@@ -183,6 +187,7 @@ decoder_choices = ClassChoices(
         whisper=OpenAIWhisperDecoder,
         hugging_face_transformers=HuggingFaceTransformersDecoder,
         s4=S4Decoder,
+        block_han=BlockHANTransformerDecoder,
     ),
     type_check=AbsDecoder,
     default=None,
@@ -382,6 +387,12 @@ class ASRTask(AbsTask):
             default=[],
             help="Auxillary tasks to train on using CTC loss. ",
         )
+        group.add_argument(
+            "--block_wise_training",
+            type=bool,
+            default=False,
+            help="Whether to use the block_wise_trainer  ",
+        )
 
         for class_choices in cls.class_choices_list:
             # Append --<name> and --<name>_conf.
@@ -404,6 +415,8 @@ class ASRTask(AbsTask):
         cls, args: argparse.Namespace, train: bool
     ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
         assert check_argument_types()
+        
+
         if args.use_preprocessor:
             try:
                 _ = getattr(args, "preprocessor")
@@ -579,6 +592,7 @@ class ASRTask(AbsTask):
             model_class = model_choices.get_class(args.model)
         except AttributeError:
             model_class = model_choices.get_class("espnet")
+        
         model = model_class(
             vocab_size=vocab_size,
             frontend=frontend,
@@ -596,8 +610,10 @@ class ASRTask(AbsTask):
 
         # FIXME(kamo): Should be done in model?
         # 8. Initialize
+
         if args.init is not None:
             initialize(model, args.init)
 
         assert check_return_type(model)
+
         return model

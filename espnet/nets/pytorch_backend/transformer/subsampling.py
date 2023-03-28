@@ -6,10 +6,12 @@
 
 """Subsampling layer definition."""
 
+import logging 
+
 import torch
 
 from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
-
+from espnet.nets.pytorch_backend.nets_utils import make_pad_mask,pad_list
 
 class TooShortUttError(Exception):
     """Raised when the utt is too short for subsampling.
@@ -65,10 +67,10 @@ class Conv2dSubsampling(torch.nn.Module):
         )
         self.out = torch.nn.Sequential(
             torch.nn.Linear(odim * (((idim - 1) // 2 - 1) // 2), odim),
-            pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
         )
+        self.pos_enc = pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate)
 
-    def forward(self, x, x_mask):
+    def forward(self, x, x_mask,enc_context=None):
         """Subsample x.
 
         Args:
@@ -87,8 +89,15 @@ class Conv2dSubsampling(torch.nn.Module):
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
         if x_mask is None:
+            x = self.pos_enc(x)
             return x, None
-        return x, x_mask[:, :, :-2:2][:, :, :-2:2]
+        if enc_context is not None:
+            x = torch.cat((enc_context,x),dim=1)
+        x = self.pos_enc(x)
+        x_mask = x_mask[:, :, :-2:2][:, :, :-2:2]
+        if enc_context is not None:
+            x = (x[0][:,enc_context.shape[1]:,::],x[1])
+        return x, x_mask
 
     def __getitem__(self, key):
         """Get item.
@@ -127,7 +136,7 @@ class Conv2dSubsampling1(torch.nn.Module):
             pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
         )
 
-    def forward(self, x, x_mask):
+    def forward(self, x, x_mask,enc_context=None):
         """Pass x through 2 Conv2d layers without subsampling.
 
         Args:
@@ -145,6 +154,7 @@ class Conv2dSubsampling1(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        
         if x_mask is None:
             return x, None
         return x, x_mask[:, :, :-4]
@@ -186,7 +196,7 @@ class Conv2dSubsampling2(torch.nn.Module):
             pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
         )
 
-    def forward(self, x, x_mask):
+    def forward(self, x, x_mask,enc_context=None):
         """Subsample x.
 
         Args:
@@ -204,8 +214,10 @@ class Conv2dSubsampling2(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        
         if x_mask is None:
             return x, None
+        
         return x, x_mask[:, :, :-2:2][:, :, :-2:1]
 
     def __getitem__(self, key):
@@ -245,7 +257,7 @@ class Conv2dSubsampling6(torch.nn.Module):
             pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
         )
 
-    def forward(self, x, x_mask):
+    def forward(self, x, x_mask,enc_context=None):
         """Subsample x.
 
         Args:
@@ -292,10 +304,10 @@ class Conv2dSubsampling8(torch.nn.Module):
         )
         self.out = torch.nn.Sequential(
             torch.nn.Linear(odim * ((((idim - 1) // 2 - 1) // 2 - 1) // 2), odim),
-            pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
         )
+        self.pos_enc = pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate)
 
-    def forward(self, x, x_mask):
+    def forward(self, x, x_mask,enc_context=None):
         """Subsample x.
 
         Args:
@@ -313,6 +325,20 @@ class Conv2dSubsampling8(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+
+        if enc_context is not None:
+            prev_lens = enc_context.shape[1] * torch.ones(enc_context.shape[0],dtype=torch.long).to(enc_context.device)
+            x = torch.cat((enc_context,x),dim=1)
+            ctx_mask = (~make_pad_mask(prev_lens)[:, None, :]).to(x.device)
+            x_mask = x_mask[:, :, :-2:2][:, :, :-2:2][:, :, :-2:2]
+            x_mask = torch.cat([ctx_mask,x_mask],dim=-1)
+        else:
+            x_mask = x_mask[:, :, :-2:2][:, :, :-2:2][:, :, :-2:2]
+        x = self.pos_enc(x)
         if x_mask is None:
             return x, None
-        return x, x_mask[:, :, :-2:2][:, :, :-2:2][:, :, :-2:2]
+        if enc_context is not None:
+            x = (x[0][:,10:,::],x[1])
+            return x, x_mask
+        
+        return x, x_mask

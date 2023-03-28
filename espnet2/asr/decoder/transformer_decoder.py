@@ -3,7 +3,7 @@
 
 """Decoder definition."""
 from typing import Any, List, Sequence, Tuple
-
+import logging 
 import torch
 from typeguard import check_argument_types
 
@@ -57,6 +57,7 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         use_output_layer: bool = True,
         pos_enc_class=PositionalEncoding,
         normalize_before: bool = True,
+        compute_output_projection: bool = True,
     ):
         assert check_argument_types()
         super().__init__()
@@ -86,6 +87,8 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         else:
             self.output_layer = None
 
+        self.compute_output_projection = compute_output_projection
+        
         # Must set by the inheritance
         self.decoders = None
 
@@ -131,6 +134,7 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
             memory_mask = torch.nn.functional.pad(
                 memory_mask, (0, padlen), "constant", False
             )
+        # logging.warning(f"memory_mask.shape: {memory_mask.shape} Memory shape: {memory.shape} Target shape: {tgt.shape}")
 
         x = self.embed(tgt)
         x, tgt_mask, memory, memory_mask = self.decoders(
@@ -138,7 +142,7 @@ class BaseTransformerDecoder(AbsDecoder, BatchScorerInterface):
         )
         if self.normalize_before:
             x = self.after_norm(x)
-        if self.output_layer is not None:
+        if self.output_layer is not None and self.compute_output_projection:
             x = self.output_layer(x)
 
         olens = tgt_mask.sum(1)

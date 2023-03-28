@@ -36,6 +36,7 @@ class DefaultFrontend(AbsFrontend):
         htk: bool = False,
         frontend_conf: Optional[dict] = get_default_kwargs(Frontend),
         apply_stft: bool = True,
+        audio_clip:int = None,
     ):
         assert check_argument_types()
         super().__init__()
@@ -75,6 +76,10 @@ class DefaultFrontend(AbsFrontend):
         )
         self.n_mels = n_mels
         self.frontend_type = "default"
+        if audio_clip:
+            self.max_audio_len = audio_clip
+        else:
+            self.max_audio_len = None
 
     def output_size(self) -> int:
         return self.n_mels
@@ -82,6 +87,10 @@ class DefaultFrontend(AbsFrontend):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        ## Audio Clipping 
+        if self.max_audio_len:
+            input = input[:,:self.max_audio_len]
+            input_lengths = torch.LongTensor([x if x < self.max_audio_len else self.max_audio_len for x in input_lengths])
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
         if self.stft is not None:
             input_stft, feats_lens = self._compute_stft(input, input_lengths)

@@ -29,7 +29,7 @@ class CosformerAttention(nn.Module):
         n_feat,
         dropout_rate=0.0,
         act_fun="relu",
-        cos_reweight=True,
+        cos_reweight=False,
         kdim=None,
         vdim=None,
         causal=False,
