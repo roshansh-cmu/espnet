@@ -67,7 +67,8 @@ torch_version=torch.__version__.split("+")[0]
 print(torch_version)
 EOF
 )
-libc_version="$(ldd --version | awk 'NR==1 {print $NF}')"
+libc_path="$(ldd /bin/bash | grep libc.so | awk '{ print $3 }')"
+libc_version="$(${libc_path} | grep "GNU C Library" | grep -oP "version [0-9]*.[0-9]*" | cut -d" " -f2)"
 
 pytorch_plus(){
     python3 <<EOF

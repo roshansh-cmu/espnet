@@ -14,27 +14,27 @@ import torch
 
 def make_arg(**kwargs):
     defaults = dict(
-        aconv_chans=2,
-        aconv_filts=20,
-        adim=20,
+        aconv_chans=10,
+        aconv_filts=100,
+        adim=320,
         aheads=4,
         apply_uttmvn=False,
         atype="location",
         awin=5,
-        badim=20,
+        badim=320,
         batch_bins=0,
         batch_count="auto",
         batch_frames_in=0,
         batch_frames_inout=0,
         batch_frames_out=0,
-        batch_size=2,
+        batch_size=10,
         bdropout_rate=0.0,
         beam_size=3,
         blayers=2,
         bnmask=3,
-        bprojs=10,
+        bprojs=300,
         btype="blstmp",
-        bunits=10,
+        bunits=300,
         char_list=["a", "i", "u", "e", "o"],
         context_residual=False,
         ctc_type="builtin",
@@ -43,12 +43,12 @@ def make_arg(**kwargs):
         dropout_rate=0.0,
         dropout_rate_decoder=0.0,
         dtype="lstm",
-        dunits=10,
+        dunits=300,
         elayers_sd=1,
         elayers=2,
         etype="vggblstmp",
-        eprojs=10,
-        eunits=10,
+        eprojs=100,
+        eunits=100,
         fbank_fmax=None,
         fbank_fmin=0.0,
         fbank_fs=16000,
@@ -86,9 +86,9 @@ def make_arg(**kwargs):
         wlayers=2,
         wpe_delay=3,
         wpe_taps=5,
-        wprojs=10,
+        wprojs=300,
         wtype="blstmp",
-        wunits=10,
+        wunits=300,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -181,7 +181,6 @@ def test_pit_process(etype, dtype, num_spkrs, m_str, data_idx):
     assert torch.equal(min_perm, true_perm[data_idx])
 
 
-@pytest.mark.execution_timeout(5)
 @pytest.mark.parametrize(
     ("use_frontend", "use_beamformer", "bnmask", "num_spkrs", "m_str"),
     [(True, True, 3, 2, "espnet.nets.pytorch_backend.e2e_asr_mix")],

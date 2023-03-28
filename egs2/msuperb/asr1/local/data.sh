@@ -15,8 +15,7 @@ nlsyms_txt=data/local/nlsyms.txt
 duration=10min # duration can be either 10min or 1h
 multilingual=true
 lid=false
-only_lid=false
-single_lang=eng # lang for single lang data preparation
+single_lang=eng # lang for single lang data preparation 
                 # candidates: eng, deu, rus, pol, swe, jpn, cmn, sat, nob, xty
 
  . utils/parse_options.sh || exit 1;
@@ -41,7 +40,7 @@ set -o pipefail
 
 log "data preparation started"
 
-if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then 
     log "stage1: Download data to ${MSUPERB}"
     log "Not released yet"
 fi
@@ -50,27 +49,22 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     log "stage2: Preparing data for multilingual SUPERB"
 
     if "${multilingual}"; then
-        if "${only_lid}"; then
-            suffix="_only_lid"
+        if "${lid}"; then
+            suffix="_lid"
         else
-            if "${lid}"; then
-                suffix="_lid"
-            else
-                suffix=""
-            fi
+            suffix=""
         fi
         mkdir -p data/train_${duration}${suffix}
         mkdir -p data/dev_${duration}${suffix}
         mkdir -p data/test_${duration}${suffix}
-
+ 
         python local/data_prep.py \
             --train_set train_${duration}${suffix} \
             --train_dev dev_${duration}${suffix} \
             --test_set test_${duration}${suffix} \
             --duration ${duration} \
             --source ${MSUPERB} \
-            --lid ${lid} \
-            --only_lid ${only_lid}
+            --lid ${lid}
 
         for x in "train" "dev" "test"; do
             utils/utt2spk_to_spk2utt.pl \
@@ -82,7 +76,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         for x in "train" "dev" "test"; do
             mkdir -p data/${x}_${duration}_${single_lang}
         done
-
+        
         python local/single_lang_data_prep.py \
             --duration ${duration} \
             --source ${MSUPERB} \
@@ -131,13 +125,13 @@ fi
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     log "stage3: Create non-linguistic symbols for language ID"
     mkdir -p "$(dirname ${nlsyms_txt})"
-    if "${multilingual}" && "${lid}"; then
+    if "${multilingual}"; then
         train_set=data/train_${duration}${suffix}
         cut -f 2- ${train_set}/text | grep -o -P '\[.*?\]|\<.*?\>' | sort | uniq > ${nlsyms_txt}
         log "save non-linguistic symbols in ${nlsyms_txt}"
     else
         touch ${nlsyms_txt}
-        log "no non-linguistic symbols needed"
+        log "no non-linguistic symbols needed for single language cases"
     fi
 fi
 

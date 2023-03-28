@@ -11,6 +11,7 @@ import re
 import sys
 
 import numpy as np
+import six
 
 
 def permutationDFS(source, start, res):
@@ -183,8 +184,8 @@ def main():
 
     # Read results from files
     results = {}
-    for r in range(1, args.num_spkrs + 1):
-        for h in range(1, args.num_spkrs + 1):
+    for r in six.moves.range(1, args.num_spkrs + 1):
+        for h in six.moves.range(1, args.num_spkrs + 1):
             idx = (r - 1) * args.num_spkrs + h - 1
             key = "r{}h{}".format(r, h)
 

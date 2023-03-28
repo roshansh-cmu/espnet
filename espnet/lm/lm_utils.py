@@ -13,6 +13,7 @@ import random
 import chainer
 import h5py
 import numpy as np
+import six
 from chainer.training import extension
 from tqdm import tqdm
 
@@ -151,7 +152,7 @@ class ParallelSentenceIterator(chainer.dataset.Iterator):
                 # shuffle batches
                 random.shuffle(self.batch_indices)
         else:
-            self.batch_indices = [np.array([i]) for i in range(length)]
+            self.batch_indices = [np.array([i]) for i in six.moves.range(length)]
 
         # NOTE: this is not a count of parameter updates. It is just a count of
         # calls of ``__next__``.

@@ -1,6 +1,5 @@
 import logging
-import re
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -45,7 +44,6 @@ class ChunkIterFactory(AbsIterFactory):
         num_workers: int = 0,
         collate_fn=None,
         pin_memory: bool = False,
-        excluded_key_prefixes: Optional[List[str]] = None,
     ):
         assert check_argument_types()
         assert all(len(x) == 1 for x in batches), "batch-size must be 1"
@@ -89,21 +87,6 @@ class ChunkIterFactory(AbsIterFactory):
         self.seed = seed
         self.shuffle = shuffle
 
-        # keys that satisfy either condition below will be excluded from the length
-        # consistency check:
-        #  - exactly match one of the prefixes in `excluded_key_prefixes`
-        #  - have one of the prefixes in `excluded_key_prefixes` and end with numbers
-        self.excluded_key_pattern = (
-            "(" + "[0-9]*)|(".join(excluded_key_prefixes) + "[0-9]*)"
-            if excluded_key_prefixes is not None
-            else None
-        )
-        if self.excluded_key_pattern:
-            logging.info(
-                f"Data keys with the following patterns will be excluded from the "
-                f"length consistency check:\n{self.excluded_key_pattern}"
-            )
-
     def build_iter(
         self,
         epoch: int,
@@ -135,12 +118,9 @@ class ChunkIterFactory(AbsIterFactory):
             id_ = ids[0]
 
             for key in sequence_keys:
-                if self.excluded_key_pattern is not None and re.fullmatch(
-                    self.excluded_key_pattern, key
-                ):
-                    # ignore length inconsistency for `excluded_key_prefixes`
-                    continue
-                if len(batch[key]) != len(batch[sequence_keys[0]]):
+                if len(batch[key]) != len(
+                    batch[sequence_keys[0]]
+                ) and not key.startswith("enroll_ref"):
                     raise RuntimeError(
                         f"All sequences must has same length: "
                         f"{len(batch[key])} != {len(batch[sequence_keys[0]])}"
@@ -176,11 +156,19 @@ class ChunkIterFactory(AbsIterFactory):
                     cache_chunks[k] = []
                 if k in sequence_keys:
                     # Shift chunks with overlapped length for data augmentation
-                    if self.excluded_key_pattern is not None and re.fullmatch(
-                        self.excluded_key_pattern, k
-                    ):
-                        for _ in range(N):
-                            cache_chunks[k].append(v)
+                    if k.startswith("enroll_ref"):
+                        is_spk_embedding = v.ndim == 2 and v.shape[0] == 1
+                        for i in range(N):
+                            if is_spk_embedding:
+                                cache_chunks[k].append(v)
+                            else:
+                                start = 0 if len(v) <= W else state.randint(len(v) - W)
+                                pad_right = W - len(v) if len(v) <= W else 0
+                                cache_chunks[k].append(
+                                    torch.nn.functional.pad(
+                                        v[start : start + W], (0, pad_right)
+                                    )
+                                )
                     else:
                         cache_chunks[k] += [
                             v[Z + i * S : Z + i * S + W] for i in range(N)

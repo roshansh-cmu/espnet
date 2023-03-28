@@ -316,24 +316,34 @@ def test_vits_is_trainable_and_decodable(gen_dict, dis_dict, loss_dict):
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score": torch.tensor([8, 5], dtype=torch.long),
         },
-        duration={
-            "lab": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_phn": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 1], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_syb": torch.tensor(
-                [[3, 3, 5, 5, 4, 4, 3, 3], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
-            ),
+        tempo={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score": torch.randint(1, idim, (2, 8)),
         },
-        duration_lengths={
+        tempo_lengths={
+            "lab": torch.tensor([8, 5], dtype=torch.long),
+            "score": torch.tensor([8, 5], dtype=torch.long),
+        },
+        beat={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score_phn": torch.randint(1, idim, (2, 8)),
+            "score_syb": torch.randint(1, idim, (2, 8)),
+        },
+        beat_lengths={
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score_phn": torch.tensor([8, 5], dtype=torch.long),
             "score_syb": torch.tensor([8, 5], dtype=torch.long),
         },
         pitch=torch.randn(2, 16, 1),
         pitch_lengths=torch.tensor([16, 13], dtype=torch.long),
+        duration={
+            "phn": torch.tensor(
+                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
+            ),
+            "syb": torch.tensor(
+                [[3, 3, 5, 5, 4, 4, 4, 4], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
+            ),
+        },
     )
     gen_loss = model(forward_generator=True, **inputs)["loss"]
     gen_loss.backward()
@@ -389,10 +399,49 @@ def test_vits_is_trainable_and_decodable(gen_dict, dis_dict, loss_dict):
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
         )
@@ -444,10 +493,49 @@ def test_vits_is_trainable_and_decodable(gen_dict, dis_dict, loss_dict):
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
             feats=torch.randn(16, odim),
@@ -635,24 +723,34 @@ def test_multi_speaker_vits_is_trainable_and_decodable(
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score": torch.tensor([8, 5], dtype=torch.long),
         },
-        duration={
-            "lab": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_phn": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 1], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_syb": torch.tensor(
-                [[3, 3, 5, 5, 4, 4, 3, 3], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
-            ),
+        tempo={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score": torch.randint(1, idim, (2, 8)),
         },
-        duration_lengths={
+        tempo_lengths={
+            "lab": torch.tensor([8, 5], dtype=torch.long),
+            "score": torch.tensor([8, 5], dtype=torch.long),
+        },
+        beat={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score_phn": torch.randint(1, idim, (2, 8)),
+            "score_syb": torch.randint(1, idim, (2, 8)),
+        },
+        beat_lengths={
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score_phn": torch.tensor([8, 5], dtype=torch.long),
             "score_syb": torch.tensor([8, 5], dtype=torch.long),
         },
         pitch=torch.randn(2, 16, 1),
         pitch_lengths=torch.tensor([16, 13], dtype=torch.long),
+        duration={
+            "phn": torch.tensor(
+                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
+            ),
+            "syb": torch.tensor(
+                [[3, 3, 5, 5, 4, 4, 4, 4], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
+            ),
+        },
     )
     if spks > 0:
         inputs["sids"] = torch.randint(0, spks, (2, 1))
@@ -714,10 +812,49 @@ def test_multi_speaker_vits_is_trainable_and_decodable(
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
         )
@@ -775,10 +912,49 @@ def test_multi_speaker_vits_is_trainable_and_decodable(
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
             feats=torch.randn(16, odim),
@@ -966,33 +1142,38 @@ def test_vits_is_trainable_and_decodable_on_gpu(gen_dict, dis_dict, loss_dict):
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score": torch.tensor([8, 5], dtype=torch.long),
         },
-        duration={
-            "lab": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_phn": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 1], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_syb": torch.tensor(
-                [[3, 3, 5, 5, 4, 4, 3, 3], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
-            ),
+        tempo={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score": torch.randint(1, idim, (2, 8)),
         },
-        duration_lengths={
+        tempo_lengths={
+            "lab": torch.tensor([8, 5], dtype=torch.long),
+            "score": torch.tensor([8, 5], dtype=torch.long),
+        },
+        beat={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score_phn": torch.randint(1, idim, (2, 8)),
+            "score_syb": torch.randint(1, idim, (2, 8)),
+        },
+        beat_lengths={
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score_phn": torch.tensor([8, 5], dtype=torch.long),
             "score_syb": torch.tensor([8, 5], dtype=torch.long),
         },
         pitch=torch.randn(2, 16, 1),
         pitch_lengths=torch.tensor([16, 13], dtype=torch.long),
+        duration={
+            "phn": torch.tensor(
+                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
+            ),
+            "syb": torch.tensor(
+                [[3, 3, 5, 5, 4, 4, 4, 4], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
+            ),
+        },
     )
     device = torch.device("cuda")
     model.to(device)
-    inputs = {
-        k: {k2: v2.to(device) for k2, v2 in v.items()}
-        if isinstance(v, dict)
-        else v.to(device)
-        for k, v in inputs.items()
-    }
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     gen_loss = model(forward_generator=True, **inputs)["loss"]
     gen_loss.backward()
     dis_loss = model(forward_generator=False, **inputs)["loss"]
@@ -1047,19 +1228,53 @@ def test_vits_is_trainable_and_decodable_on_gpu(gen_dict, dis_dict, loss_dict):
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
         )
-        inputs = {
-            k: {k2: v2.to(device) for k2, v2 in v.items()}
-            if isinstance(v, dict)
-            else v.to(device)
-            for k, v in inputs.items()
-        }
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         model.inference(**inputs)
 
         # check inference with teachder forcing
@@ -1108,20 +1323,54 @@ def test_vits_is_trainable_and_decodable_on_gpu(gen_dict, dis_dict, loss_dict):
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
             feats=torch.randn(16, odim),
         )
-        inputs = {
-            k: {k2: v2.to(device) for k2, v2 in v.items()}
-            if isinstance(v, dict)
-            else v.to(device)
-            for k, v in inputs.items()
-        }
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         output_dict = model.inference(**inputs, use_teacher_forcing=True)
         assert output_dict["wav"].size(0) == inputs["feats"].size(0) * upsample_factor
 
@@ -1309,24 +1558,34 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score": torch.tensor([8, 5], dtype=torch.long),
         },
-        duration={
-            "lab": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_phn": torch.tensor(
-                [[1, 2, 2, 3, 1, 3, 2, 1], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
-            ),
-            "score_syb": torch.tensor(
-                [[3, 3, 5, 5, 4, 4, 3, 3], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
-            ),
+        tempo={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score": torch.randint(1, idim, (2, 8)),
         },
-        duration_lengths={
+        tempo_lengths={
+            "lab": torch.tensor([8, 5], dtype=torch.long),
+            "score": torch.tensor([8, 5], dtype=torch.long),
+        },
+        beat={
+            "lab": torch.randint(1, idim, (2, 8)),
+            "score_phn": torch.randint(1, idim, (2, 8)),
+            "score_syb": torch.randint(1, idim, (2, 8)),
+        },
+        beat_lengths={
             "lab": torch.tensor([8, 5], dtype=torch.long),
             "score_phn": torch.tensor([8, 5], dtype=torch.long),
             "score_syb": torch.tensor([8, 5], dtype=torch.long),
         },
         pitch=torch.randn(2, 16, 1),
         pitch_lengths=torch.tensor([16, 13], dtype=torch.long),
+        duration={
+            "phn": torch.tensor(
+                [[1, 2, 2, 3, 1, 3, 2, 2], [2, 2, 1, 4, 1, 2, 1, 3]], dtype=torch.int64
+            ),
+            "syb": torch.tensor(
+                [[3, 3, 5, 5, 4, 4, 4, 4], [4, 4, 5, 5, 3, 3, 4, 4]], dtype=torch.int64
+            ),
+        },
     )
     if spks > 0:
         inputs["sids"] = torch.randint(0, spks, (2, 1))
@@ -1336,12 +1595,7 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
         inputs["spembs"] = torch.randn(2, spk_embed_dim)
     device = torch.device("cuda")
     model.to(device)
-    inputs = {
-        k: {k2: v2.to(device) for k2, v2 in v.items()}
-        if isinstance(v, dict)
-        else v.to(device)
-        for k, v in inputs.items()
-    }
+    inputs = {k: v.to(device) for k, v in inputs.items()}
     gen_loss = model(forward_generator=True, **inputs)["loss"]
     gen_loss.backward()
     dis_loss = model(forward_generator=False, **inputs)["loss"]
@@ -1396,10 +1650,49 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
         )
@@ -1409,12 +1702,7 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
             inputs["lids"] = torch.randint(0, langs, (1,))
         if spk_embed_dim > 0:
             inputs["spembs"] = torch.randn(spk_embed_dim)
-        inputs = {
-            k: {k2: v2.to(device) for k2, v2 in v.items()}
-            if isinstance(v, dict)
-            else v.to(device)
-            for k, v in inputs.items()
-        }
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         model.inference(**inputs)
 
         # check inference with teachder forcing
@@ -1463,10 +1751,49 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
                     ),
                 ),
             },
-            duration={
-                "lab": torch.tensor([[1, 2, 2, 3, 3]], dtype=torch.int64),
-                "score_phn": torch.tensor([[1, 2, 2, 3, 4]], dtype=torch.int64),
-                "score_syb": torch.tensor([[3, 3, 5, 5, 4]], dtype=torch.int64),
+            tempo={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+            },
+            beat={
+                "lab": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_phn": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
+                "score_syb": torch.randint(
+                    1,
+                    idim,
+                    (
+                        1,
+                        5,
+                    ),
+                ),
             },
             pitch=torch.randn(16, 1),
             feats=torch.randn(16, odim),
@@ -1477,11 +1804,6 @@ def test_multi_speaker_vits_is_trainable_and_decodable_on_gpu(
             inputs["lids"] = torch.randint(0, langs, (1,))
         if spk_embed_dim > 0:
             inputs["spembs"] = torch.randn(spk_embed_dim)
-        inputs = {
-            k: {k2: v2.to(device) for k2, v2 in v.items()}
-            if isinstance(v, dict)
-            else v.to(device)
-            for k, v in inputs.items()
-        }
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         output_dict = model.inference(**inputs, use_teacher_forcing=True)
         assert output_dict["wav"].size(0) == inputs["feats"].size(0) * upsample_factor

@@ -4,6 +4,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import numpy as np
+import six
 from chainer import cuda
 
 from espnet.nets.chainer_backend.nets_utils import _subsamplex
@@ -34,7 +35,7 @@ class RNNP(chainer.Chain):
             rnn = L.NStepLSTM if "lstm" in typ else L.NStepGRU
         rnn_label = "birnn" if bidir else "rnn"
         with self.init_scope():
-            for i in range(elayers):
+            for i in six.moves.range(elayers):
                 if i == 0:
                     inputdim = idim
                 else:
@@ -67,7 +68,7 @@ class RNNP(chainer.Chain):
         """
         logging.info(self.__class__.__name__ + " input lengths: " + str(ilens))
 
-        for layer in range(self.elayers):
+        for layer in six.moves.range(self.elayers):
             if "lstm" in self.typ:
                 _, _, ys = self[self.rnn_label + str(layer)](None, None, xs)
             else:

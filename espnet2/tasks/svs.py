@@ -10,7 +10,6 @@ import torch
 import yaml
 from typeguard import check_argument_types, check_return_type
 
-from espnet2.gan_svs.joint import JointScore2Wav
 from espnet2.gan_svs.vits import VITS
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.layers.global_mvn import GlobalMVN
@@ -116,7 +115,6 @@ svs_choices = ClassChoices(
         xiaoice=XiaoiceSing,
         # xiaoice_noDP=XiaoiceSing_noDP,
         vits=VITS,
-        joint_score2wav=JointScore2Wav,
         # mlp=MLPSinger,
     ),
     type_check=AbsSVS,
@@ -298,7 +296,7 @@ class SVSTask(AbsTask):
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
         if not inference:
-            retval = ("spembs", "durations", "pitch", "energy", "sids", "lids", "feats")
+            retval = ("spembs", "durations", "pitch", "energy", "sids", "lids")
         else:
             # Inference mode
             retval = ("spembs", "singing", "pitch", "durations", "sids", "lids")
@@ -402,7 +400,8 @@ class SVSTask(AbsTask):
             score_feats_extract=score_feats_extract,
             label_extract=score_feats_extract,
             pitch_extract=pitch_extract,
-            duration_extract=score_feats_extract,
+            tempo_extract=score_feats_extract,
+            beat_extract=score_feats_extract,
             energy_extract=energy_extract,
             normalize=normalize,
             pitch_normalize=pitch_normalize,

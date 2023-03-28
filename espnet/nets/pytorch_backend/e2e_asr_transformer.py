@@ -367,8 +367,10 @@ class E2E(ASRInterface, torch.nn.Module):
         hyps = [hyp]
         ended_hyps = []
 
+        import six
+
         traced_decoder = None
-        for i in range(maxlen):
+        for i in six.moves.range(maxlen):
             logging.debug("position " + str(i))
 
             hyps_best_kept = []
@@ -423,7 +425,7 @@ class E2E(ASRInterface, torch.nn.Module):
                         local_scores, beam, dim=1
                     )
 
-                for j in range(beam):
+                for j in six.moves.range(beam):
                     new_hyp = {}
                     new_hyp["score"] = hyp["score"] + float(local_best_scores[0, j])
                     new_hyp["yseq"] = [0] * (1 + len(hyp["yseq"]))

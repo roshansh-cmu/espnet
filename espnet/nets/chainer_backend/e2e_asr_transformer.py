@@ -9,6 +9,7 @@ from distutils.util import strtobool
 import chainer
 import chainer.functions as F
 import numpy as np
+import six
 from chainer import reporter
 
 from espnet.nets.chainer_backend.asr_interface import ChainerASRInterface
@@ -425,7 +426,7 @@ class E2E(ChainerASRInterface):
         hyps = [hyp]
         ended_hyps = []
 
-        for i in range(maxlen):
+        for i in six.moves.range(maxlen):
             logging.debug("position " + str(i))
 
             hyps_best_kept = []
@@ -468,7 +469,7 @@ class E2E(ChainerASRInterface):
                     ]
                     local_best_scores = local_scores[:, local_best_ids]
 
-                for j in range(beam):
+                for j in six.moves.range(beam):
                     new_hyp = {}
                     new_hyp["score"] = hyp["score"] + float(local_best_scores[0, j])
                     new_hyp["yseq"] = [0] * (1 + len(hyp["yseq"]))
