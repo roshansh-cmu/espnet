@@ -7,33 +7,33 @@ set -o pipefail
 
 train_set="train"
 valid_set="dev"
-test_sets="test"
+test_sets="test dev"
 
-asr_config=conf/train_asr_tedlium.yaml
-bpe_train_text=dump/raw/train_sp/text
+# Set this to one of ["legacy", "speaker-adaptation"]
+data_type=legacy
+
+asr_config=conf/train.yaml
+inference_config=conf/decode.yaml
 lm_config=conf/train_lm.yaml
-use_lm=true
-use_wordlm=false
 
-# speed perturbation related
-# (train_set will be "${train_set}_sp" if speed_perturb_factors is specified)
-speed_perturb_factors="0.9 1.0 1.1"
-
-./asr.sh                                               \
-    --lang en                                          \
-    --audio_format flac                                 \
-    --feats_type raw                                   \
-    --token_type bpe                                  \
-    --nbpe 500                                         \
-    --stage 1 \
-    --feats_normalize utterance_mvn\
-    --bpe_train_text ${bpe_train_text}        \
-    --use_lm ${use_lm}                                 \
-    --use_word_lm ${use_wordlm}                        \
-    --lm_config "${lm_config}"                         \
-    --asr_config "${asr_config}"                       \
-    --train_set "${train_set}"                         \
-    --valid_set "${valid_set}"                         \
-    --test_sets "${test_sets}"                         \
-    --speed_perturb_factors "${speed_perturb_factors}" \
-    --lm_train_text "data/${train_set}/text" "$@"
+./asr.sh \
+    --lang en \
+    --nj 8 \
+    --ngpu 4 \
+    --gpu_inference true \
+    --inference_nj 2 \
+    --feats_type raw \
+    --audio_format "flac.ark" \
+    --token_type bpe \
+    --nbpe 500 \
+    --asr_config "${asr_config}" \
+    --inference_config "${inference_config}" \
+    --train_set "${train_set}" \
+    --valid_set "${valid_set}" \
+    --test_sets "${test_sets}" \
+    --speed_perturb_factors "0.9 1.0 1.1" \
+    --bpe_train_text "data/${train_set}/text" \
+    --lm_train_text "data/local/text" \
+    --lm_config "${lm_config}" \
+    --local_data_opts "--data_type ${data_type}" \
+    --bpe_nlsyms "[unk]"
