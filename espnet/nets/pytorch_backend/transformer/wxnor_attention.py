@@ -36,8 +36,7 @@ class WeightedXNorCosAttention(XNorAttention):
     ):
         super().__init__(n_head, n_feat)
         self.weights = torch.nn.Parameter(torch.FloatTensor([0.5, 0.5]))
-        self.register_parameter("xnor_weights",self.weights)
-        
+        self.register_parameter("xnor_weights", self.weights)
 
     def get_index(self, seq_len):
         index = np.pi / 2 * torch.arange(1, seq_len + 1).reshape(1, -1, 1)
@@ -412,7 +411,7 @@ class WeightedXNorAttention(XNorAttention):
         super().__init__(n_head, n_feat)
 
         self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
-        self.register_parameter("xnor_weights",self.weights)
+        self.register_parameter("xnor_weights", self.weights)
 
     def forward(
         self,
@@ -619,8 +618,8 @@ class GatedXNorAttention(XNorAttention):
     ):
         super().__init__(n_head, n_feat)
 
-        size = n_feat // n_head 
-        self.gater = torch.nn.Linear(2*size, 2)
+        size = n_feat // n_head
+        self.gater = torch.nn.Linear(2 * size, 2)
         # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
         # self.register_parameter("xnor_weights",self.weights)
 
@@ -686,7 +685,6 @@ class GatedXNorAttention(XNorAttention):
         # (N * h, S, d)
         v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
 
-        
         # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
         kv_ = torch.einsum("nld,nlm->ndm", k_, v)
         comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
@@ -707,15 +705,13 @@ class GatedXNorAttention(XNorAttention):
         concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
 
         gating_weights = torch.sigmoid(self.gater(concatenated_output))
-        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
-        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        wt_1 = gating_weights[:, :, 0].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
+        wt_2 = gating_weights[:, :, 1].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
         # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape} {wt_2.shape} {wt_1.shape}")
 
         attn_output = wt_1 * attn_output + wt_2 * attn_output2
-        
-        attn_output = (
-            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
-        )
+
+        attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
         # L, N, E
         if self.has_outproj:
             attn_output = self.linear_out(attn_output)
@@ -742,8 +738,8 @@ class GatedXNorNoDenomAttention(XNorAttention):
     ):
         super().__init__(n_head, n_feat)
 
-        size = n_feat // n_head 
-        self.gater = torch.nn.Linear(2*size, 2)
+        size = n_feat // n_head
+        self.gater = torch.nn.Linear(2 * size, 2)
         # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
         # self.register_parameter("xnor_weights",self.weights)
 
@@ -809,7 +805,6 @@ class GatedXNorNoDenomAttention(XNorAttention):
         # (N * h, S, d)
         v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
 
-        
         # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
         kv_ = torch.einsum("nld,nlm->ndm", k_, v)
         comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
@@ -823,7 +818,7 @@ class GatedXNorNoDenomAttention(XNorAttention):
         # (N * h, L, 2 * d) (N * h, 2 * d, d) (N * h, L) -> (N * h, L, d)
         z_ = torch.ones_like(z)
         comp_z_ = torch.ones_like(z)
-        
+
         attn_output = torch.einsum("nld,ndm,nl->nlm", q_, kv_, z_)
         if torch.isnan(attn_output).any():
             logging.warning(f"z_ has NAN")
@@ -831,30 +826,28 @@ class GatedXNorNoDenomAttention(XNorAttention):
         # attn_output = torch.einsum("nld,ndm->nlm", q_, kv_)
         attn_output2 = torch.einsum("nld,ndm,nl->nlm", comp_q_, comp_kv_, comp_z_)
 
-
         # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
         concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
 
         gating_weights = torch.sigmoid(self.gater(concatenated_output))
-        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
-        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        wt_1 = gating_weights[:, :, 0].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
+        wt_2 = gating_weights[:, :, 1].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
         # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape} {wt_2.shape} {wt_1.shape}")
 
         attn_output = wt_1 * attn_output + wt_2 * attn_output2
 
-        ## Normalize weights 
+        ## Normalize weights
         denom = wt_1 + wt_2
         denom = torch.where(denom == 0.0, torch.ones_like(denom), denom)
         # attn_output = attn_output / denom
-        
-        attn_output = (
-            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
-        )
+
+        attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
         # L, N, E
         if self.has_outproj:
             attn_output = self.linear_out(attn_output)
 
         return attn_output.view(bsz, tgt_len, self.n_feat)
+
 
 class TermGatedXNorAttention(XNorAttention):
     """
@@ -874,8 +867,8 @@ class TermGatedXNorAttention(XNorAttention):
         zero_triu=False,
     ):
         super().__init__(n_head, n_feat)
-        size = n_feat // n_head 
-        self.gater = torch.nn.Linear(2*size, 2)
+        size = n_feat // n_head
+        self.gater = torch.nn.Linear(2 * size, 2)
 
         # self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
         # self.register_parameter("xnor_weights",self.weights)
@@ -940,7 +933,6 @@ class TermGatedXNorAttention(XNorAttention):
         # (N * h, S, d)
         v = v.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)
 
-        
         # (N * h, S, 2 * d) (N * h, S, d) -> (N * h, 2 * d, d)
         kv_ = torch.einsum("nld,nlm->ndm", k_, v)
         comp_kv_ = torch.einsum("nld,nlm->ndm", comp_k_, v)
@@ -960,17 +952,18 @@ class TermGatedXNorAttention(XNorAttention):
         # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
         concatenated_output = torch.cat((attn_output, attn_output2), dim=-1)
         concatenated_output = torch.mean(concatenated_output, dim=1)
-        gating_weights = F.sigmoid(self.gater(concatenated_output)).unsqueeze(1).repeat(1,attn_output.shape[1],1)
-        
-        wt_1 = gating_weights[:,:,0].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
-        wt_2 = gating_weights[:,:,1].unsqueeze(-1).repeat(1,1,attn_output.shape[-1])
+        gating_weights = (
+            F.sigmoid(self.gater(concatenated_output))
+            .unsqueeze(1)
+            .repeat(1, attn_output.shape[1], 1)
+        )
+
+        wt_1 = gating_weights[:, :, 0].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
+        wt_2 = gating_weights[:, :, 1].unsqueeze(-1).repeat(1, 1, attn_output.shape[-1])
         # logging.warning(f"gating_weights: {gating_weights.shape} {attn_output.shape} {attn_output2.shape}")
         attn_output = wt_1 * attn_output + wt_2 * attn_output2
-        
-        
-        attn_output = (
-            attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
-        )
+
+        attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
         # L, N, E
         if self.has_outproj:
             attn_output = self.linear_out(attn_output)
@@ -998,8 +991,7 @@ class WeightedXNorSigmoidAttention(XNorAttention):
         super().__init__(n_head, n_feat)
 
         self.weights = torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
-        self.register_parameter("xnor_weights",self.weights)
-        
+        self.register_parameter("xnor_weights", self.weights)
 
     def forward(
         self,
@@ -1115,7 +1107,7 @@ class WeightedXNorSigmoidAttention(XNorAttention):
 
         return attn_output.view(bsz, tgt_len, self.n_feat)
 
-    
+
 class MultiWeightedXNorAttention(XNorAttention):
     """
     Weighted XNorm attention
@@ -1135,11 +1127,11 @@ class MultiWeightedXNorAttention(XNorAttention):
     ):
         super().__init__(n_head, n_feat)
 
-        self.weights = nn.ParameterList([nn.Parameter(torch.randn(n_feat//n_head)) for _ in range(2)])
-        self.register_parameter("xnor_weights_1",self.weights[0])
-        self.register_parameter("xnor_weights_2",self.weights[1])
-        
-        #torch.nn.Parameter(torch.FloatTensor([1.0, 0.5]))
+        self.weights = nn.ParameterList(
+            [nn.Parameter(torch.randn(n_feat // n_head)) for _ in range(2)]
+        )
+        self.register_parameter("xnor_weights_1", self.weights[0])
+        self.register_parameter("xnor_weights_2", self.weights[1])
 
     def forward(
         self,
@@ -1245,8 +1237,8 @@ class MultiWeightedXNorAttention(XNorAttention):
             # comp_qkv = torch.einsum("nld,ndm->nlm", comp_q_, comp_kv_)
             attn_output = (self.weights[0].unsqueeze(0).unsqueeze(1) * attn_output) + (
                 self.weights[1].unsqueeze(0).unsqueeze(1) * attn_output2
-            )  
-            
+            )
+
             # (N * h, L, d) -> (L, N * h, d) -> (L, N, E)
             attn_output = (
                 attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, -1)
@@ -1256,9 +1248,6 @@ class MultiWeightedXNorAttention(XNorAttention):
             attn_output = self.linear_out(attn_output)
 
         return attn_output.view(bsz, tgt_len, self.n_feat)
-
-    
-
 
 
 class RoFormerSinusoidalPositionalEmbedding(nn.Embedding):
