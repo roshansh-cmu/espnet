@@ -24,6 +24,9 @@ class LongformerAttention(nn.Module):
         self.attention_window = config.attention_window[layer_id]
         self.attention_layer = LongformerSelfAttention(config, layer_id=layer_id)
         self.attention = None
+        self.attention_layer.value_global = None
+        self.attention_layer.key_global = None
+        self.attention_layer.query_global = None
 
     def forward(self, query, key, value, mask):
         """Compute Longformer Self-Attention with masking.
