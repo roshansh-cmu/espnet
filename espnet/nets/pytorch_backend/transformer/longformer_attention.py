@@ -28,7 +28,7 @@ class LongformerAttention(nn.Module):
         self.attention_layer.key_global = None
         self.attention_layer.query_global = None
 
-    def forward(self, query, key, value, mask):
+    def forward(self, query, key, value, pos_emb,mask):
         """Compute Longformer Self-Attention with masking.
 
         Expects `len(hidden_states)` to be multiple of `attention_window`.
