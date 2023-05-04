@@ -36,6 +36,7 @@ class DefaultFrontend(AbsFrontend):
         htk: bool = False,
         frontend_conf: Optional[dict] = get_default_kwargs(Frontend),
         apply_stft: bool = True,
+        trunc_audio: int = None
     ):
         assert check_argument_types()
         super().__init__()
@@ -76,12 +77,19 @@ class DefaultFrontend(AbsFrontend):
         self.n_mels = n_mels
         self.frontend_type = "default"
 
+        self.trunc_audio = trunc_audio
+
     def output_size(self) -> int:
         return self.n_mels
 
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        
+        if self.trunc_audio is not None:
+            input = input[:, :self.trunc_audio]
+            input_lengths = input_lengths.clamp(max=self.trunc_audio)
+            
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
         if self.stft is not None:
             input_stft, feats_lens = self._compute_stft(input, input_lengths)
