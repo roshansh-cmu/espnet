@@ -53,6 +53,8 @@ from espnet.nets.pytorch_backend.transformer.wxnor_attention import (
 from espnet.nets.pytorch_backend.transformer.fnet_attention import FNetAttention
 from espnet.nets.pytorch_backend.transformer.cgMLP_attention import ConvolutionalGatingMLP
 from espnet.nets.pytorch_backend.transformer.attention_passthrough import AttentionPassthrough
+from espnet.nets.pytorch_backend.transformer.nystrom_attention import NystromAttention
+from espnet.nets.pytorch_backend.transformer.performer_attention import PerformerAttention
 
 
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
@@ -150,6 +152,7 @@ class XFormerEncoder(AbsEncoder):
         nterms: int = 2,
         cgmlp_kernel_size: int = 3,
         cgmlp_linear_after_conv: int = True,
+        nystrom_landmark_num: int = 512,
 
     ):
         assert check_argument_types()
@@ -342,11 +345,29 @@ class XFormerEncoder(AbsEncoder):
                 cgmlp_kernel_size,
                 dropout_rate,
                 cgmlp_linear_after_conv,
-                act_fun
+                act_fun,
             )
         elif selfattention_layer_type == "noatt":
             encoder_selfattn_layer = AttentionPassthrough
             encoder_selfattn_layer_args = ()
+        elif selfattention_layer_type == "nystrom":
+            encoder_selfattn_layer = NystromAttention
+            encoder_selfattn_layer_args = (
+                output_size,
+                attention_heads,
+                linear_units,
+                nystrom_landmark_num,
+                cnn_module_kernel,
+                dropout_rate,
+                act_fun,
+            )
+        elif selfattention_layer_type == "performer":
+            encoder_selfattn_layer = PerformerAttention
+            encoder_selfattn_layer_args = (
+                output_size,
+                linear_units,
+                act_fun,
+            )
 
         # elif selfattention_layer_type == "xnor_selfattn":
         #     encoder_selfattn_layer = XNorAttention
