@@ -19,7 +19,7 @@ fi
 asr_expdir=$1
 
 name=$(basename ${data}) # e.g. dev5_test
-echo "${asr_expdir}/decode_*/${name}"
-for dir in ${asr_expdir}/decode_*/${name}; do
+echo "${asr_expdir}/${name}seg30"
+for dir in ${asr_expdir}/${name}seg30; do
     python pyscripts/utils/score_summarization.py $data/text $dir/text $(echo $dir | sed 's/exp//g') > $dir/result.sum
 done
