@@ -19,6 +19,8 @@ from espnet.nets.pytorch_backend.transformer.attention import (
     MultiHeadedAttention,
     RelPositionMultiHeadedAttention,
 )
+from espnet.nets.pytorch_backend.transformer.fnet_attention import FNetSelfAttention
+
 from espnet.nets.pytorch_backend.transformer.embedding import (
     LegacyRelPositionalEncoding,
     PositionalEncoding,
@@ -131,10 +133,10 @@ class ConformerEncoder(AbsEncoder):
         elif pos_enc_layer_type == "scaled_abs_pos":
             pos_enc_class = ScaledPositionalEncoding
         elif pos_enc_layer_type == "rel_pos":
-            assert selfattention_layer_type == "rel_selfattn"
+            assert selfattention_layer_type in ["rel_selfattn", "fnet_selfattn"]
             pos_enc_class = RelPositionalEncoding
         elif pos_enc_layer_type == "legacy_rel_pos":
-            assert selfattention_layer_type == "legacy_rel_selfattn"
+            # assert selfattention_layer_type == "legacy_rel_selfattn"
             pos_enc_class = LegacyRelPositionalEncoding
             logging.warning(
                 "Using legacy_rel_pos and it will be deprecated in the future."
@@ -255,6 +257,9 @@ class ConformerEncoder(AbsEncoder):
                 attention_dropout_rate,
                 zero_triu,
             )
+        elif selfattention_layer_type == "fnet_selfattn":
+            encoder_selfattn_layer = FNetSelfAttention
+            encoder_selfattn_layer_args = (output_size, attention_dropout_rate)
         else:
             raise ValueError("unknown encoder_attn_layer: " + selfattention_layer_type)
 
