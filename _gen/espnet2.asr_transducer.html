@@ -377,7 +377,7 @@ E-swish variant: <a class="reference external" href="https://arxiv.org/abs/1801.
 <span class="target" id="module-espnet2.asr_transducer.error_calculator"></span><p>Error Calculator module for Transducer.</p>
 <dl class="class">
 <dt id="espnet2.asr_transducer.error_calculator.ErrorCalculator">
-<em class="property">class </em><code class="sig-prename descclassname">espnet2.asr_transducer.error_calculator.</code><code class="sig-name descname">ErrorCalculator</code><span class="sig-paren">(</span><em class="sig-param">decoder: espnet2.asr_transducer.decoder.abs_decoder.AbsDecoder, joint_network: espnet2.asr_transducer.joint_network.JointNetwork, token_list: List[int], sym_space: str, sym_blank: str, report_cer: bool = False, report_wer: bool = False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/asr_transducer/error_calculator.html#ErrorCalculator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.error_calculator.ErrorCalculator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.asr_transducer.error_calculator.</code><code class="sig-name descname">ErrorCalculator</code><span class="sig-paren">(</span><em class="sig-param">decoder: espnet2.asr_transducer.decoder.abs_decoder.AbsDecoder, joint_network: espnet2.asr_transducer.joint_network.JointNetwork, token_list: List[int], sym_space: str, sym_blank: str, nstep: int = 2, report_cer: bool = False, report_wer: bool = False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/asr_transducer/error_calculator.html#ErrorCalculator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.error_calculator.ErrorCalculator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Calculate CER and WER for transducer models.</p>
 <dl class="field-list simple">
@@ -388,6 +388,7 @@ E-swish variant: <a class="reference external" href="https://arxiv.org/abs/1801.
 <li><p><strong>token_list</strong> – List of token units.</p></li>
 <li><p><strong>sym_space</strong> – Space symbol.</p></li>
 <li><p><strong>sym_blank</strong> – Blank symbol.</p></li>
+<li><p><strong>nstep</strong> – Maximum number of symbol expansions at each time step w/ mAES.</p></li>
 <li><p><strong>report_cer</strong> – Whether to compute CER.</p></li>
 <li><p><strong>report_wer</strong> – Whether to compute WER.</p></li>
 </ul>
@@ -457,7 +458,7 @@ char_target: Target character sequences. (B, ?)</p>
 <span class="target" id="module-espnet2.asr_transducer.espnet_transducer_model"></span><p>ESPnet2 ASR Transducer model.</p>
 <dl class="class">
 <dt id="espnet2.asr_transducer.espnet_transducer_model.ESPnetASRTransducerModel">
-<em class="property">class </em><code class="sig-prename descclassname">espnet2.asr_transducer.espnet_transducer_model.</code><code class="sig-name descname">ESPnetASRTransducerModel</code><span class="sig-paren">(</span><em class="sig-param">vocab_size: int, token_list: Union[Tuple[str, ...], List[str]], frontend: Optional[espnet2.asr.frontend.abs_frontend.AbsFrontend], specaug: Optional[espnet2.asr.specaug.abs_specaug.AbsSpecAug], normalize: Optional[espnet2.layers.abs_normalize.AbsNormalize], encoder: espnet2.asr_transducer.encoder.encoder.Encoder, decoder: espnet2.asr_transducer.decoder.abs_decoder.AbsDecoder, joint_network: espnet2.asr_transducer.joint_network.JointNetwork, transducer_weight: float = 1.0, fastemit_lambda: float = 0.0, auxiliary_ctc_weight: float = 0.0, auxiliary_ctc_dropout_rate: float = 0.0, auxiliary_lm_loss_weight: float = 0.0, auxiliary_lm_loss_smoothing: float = 0.05, ignore_id: int = -1, sym_space: str = '&lt;space&gt;', sym_blank: str = '&lt;blank&gt;', report_cer: bool = False, report_wer: bool = False, extract_feats_in_collect_stats: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/asr_transducer/espnet_transducer_model.html#ESPnetASRTransducerModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.espnet_transducer_model.ESPnetASRTransducerModel" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.asr_transducer.espnet_transducer_model.</code><code class="sig-name descname">ESPnetASRTransducerModel</code><span class="sig-paren">(</span><em class="sig-param">vocab_size: int, token_list: Union[Tuple[str, ...], List[str]], frontend: Optional[espnet2.asr.frontend.abs_frontend.AbsFrontend], specaug: Optional[espnet2.asr.specaug.abs_specaug.AbsSpecAug], normalize: Optional[espnet2.layers.abs_normalize.AbsNormalize], encoder: espnet2.asr_transducer.encoder.encoder.Encoder, decoder: espnet2.asr_transducer.decoder.abs_decoder.AbsDecoder, joint_network: espnet2.asr_transducer.joint_network.JointNetwork, transducer_weight: float = 1.0, use_k2_pruned_loss: bool = False, k2_pruned_loss_args: Dict = {}, warmup_steps: int = 25000, validation_nstep: int = 2, fastemit_lambda: float = 0.0, auxiliary_ctc_weight: float = 0.0, auxiliary_ctc_dropout_rate: float = 0.0, auxiliary_lm_loss_weight: float = 0.0, auxiliary_lm_loss_smoothing: float = 0.05, ignore_id: int = -1, sym_space: str = '&lt;space&gt;', sym_blank: str = '&lt;blank&gt;', report_cer: bool = False, report_wer: bool = False, extract_feats_in_collect_stats: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/asr_transducer/espnet_transducer_model.html#ESPnetASRTransducerModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.espnet_transducer_model.ESPnetASRTransducerModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="espnet2.train.html#espnet2.train.abs_espnet_model.AbsESPnetModel" title="espnet2.train.abs_espnet_model.AbsESPnetModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.abs_espnet_model.AbsESPnetModel</span></code></a></p>
 <p>ESPnet2ASRTransducerModel module definition.</p>
 <dl class="field-list simple">
@@ -472,6 +473,11 @@ char_target: Target character sequences. (B, ?)</p>
 <li><p><strong>decoder</strong> – Decoder module.</p></li>
 <li><p><strong>joint_network</strong> – Joint Network module.</p></li>
 <li><p><strong>transducer_weight</strong> – Weight of the Transducer loss.</p></li>
+<li><p><strong>use_k2_pruned_loss</strong> – Whether to use k2 pruned Transducer loss.</p></li>
+<li><p><strong>k2_pruned_loss_args</strong> – Arguments of the k2 loss pruned Transducer loss.</p></li>
+<li><p><strong>warmup_steps</strong> – Number of steps in warmup, used for pruned loss scaling.</p></li>
+<li><p><strong>validation_nstep</strong> – Maximum number of symbol expansions at each time step
+when reporting CER or/and WER using mAES.</p></li>
 <li><p><strong>fastemit_lambda</strong> – FastEmit lambda value.</p></li>
 <li><p><strong>auxiliary_ctc_weight</strong> – Weight of auxiliary CTC loss.</p></li>
 <li><p><strong>auxiliary_ctc_dropout_rate</strong> – Dropout rate for auxiliary CTC loss inputs.</p></li>
@@ -1053,7 +1059,7 @@ u_len: Label lengths. (B,)</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>output_size</strong> – Output size.</p></li>
 <li><p><strong>encoder_size</strong> – Encoder output size.</p></li>
-<li><p><strong>decoder_size</strong> – Decoder output size..</p></li>
+<li><p><strong>decoder_size</strong> – Decoder output size.</p></li>
 <li><p><strong>joint_space_size</strong> – Joint space size.</p></li>
 <li><p><strong>joint_act_type</strong> – Type of activation for joint network.</p></li>
 <li><p><strong>**activation_parameters</strong> – Parameters for the activation function.</p></li>
@@ -1063,17 +1069,23 @@ u_len: Label lengths. (B,)</p>
 <p>Construct a JointNetwork object.</p>
 <dl class="method">
 <dt id="espnet2.asr_transducer.joint_network.JointNetwork.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">enc_out: torch.Tensor</em>, <em class="sig-param">dec_out: torch.Tensor</em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="reference internal" href="../_modules/espnet2/asr_transducer/joint_network.html#JointNetwork.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.joint_network.JointNetwork.forward" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">enc_out: torch.Tensor</em>, <em class="sig-param">dec_out: torch.Tensor</em>, <em class="sig-param">no_projection: bool = False</em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="reference internal" href="../_modules/espnet2/asr_transducer/joint_network.html#JointNetwork.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.asr_transducer.joint_network.JointNetwork.forward" title="Permalink to this definition">¶</a></dt>
 <dd><p>Joint computation of encoder and decoder hidden state sequences.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>enc_out</strong> – Expanded encoder output state sequences (B, T, 1, D_enc)</p></li>
-<li><p><strong>dec_out</strong> – Expanded decoder output state sequences (B, 1, U, D_dec)</p></li>
+<li><p><strong>enc_out</strong> – Expanded encoder output state sequences.
+(B, T, s_range, D_enc) or (B, T, 1, D_enc)</p></li>
+<li><p><strong>dec_out</strong> – Expanded decoder output state sequences.
+(B, T, s_range, D_dec) or (B, 1, U, D_dec)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Joint output state sequences. (B, T, U, D_out)</p>
+<dd class="field-even"><p><dl class="simple">
+<dt>Joint output state sequences.</dt><dd><p>(B, T, U, D_out) or (B, T, s_range, D_out)</p>
+</dd>
+</dl>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>joint_out</p>

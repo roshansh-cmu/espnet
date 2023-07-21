@@ -217,7 +217,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        output_size: Output size.</span>
 <span class="sd">        encoder_size: Encoder output size.</span>
-<span class="sd">        decoder_size: Decoder output size..</span>
+<span class="sd">        decoder_size: Decoder output size.</span>
 <span class="sd">        joint_space_size: Joint space size.</span>
 <span class="sd">        joint_act_type: Type of activation for joint network.</span>
 <span class="sd">        **activation_parameters: Parameters for the activation function.</span>
@@ -249,18 +249,27 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">enc_out</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
         <span class="n">dec_out</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">no_projection</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Joint computation of encoder and decoder hidden state sequences.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            enc_out: Expanded encoder output state sequences (B, T, 1, D_enc)</span>
-<span class="sd">            dec_out: Expanded decoder output state sequences (B, 1, U, D_dec)</span>
+<span class="sd">            enc_out: Expanded encoder output state sequences.</span>
+<span class="sd">                         (B, T, s_range, D_enc) or (B, T, 1, D_enc)</span>
+<span class="sd">            dec_out: Expanded decoder output state sequences.</span>
+<span class="sd">                         (B, T, s_range, D_dec) or (B, 1, U, D_dec)</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            joint_out: Joint output state sequences. (B, T, U, D_out)</span>
+<span class="sd">            joint_out: Joint output state sequences.</span>
+<span class="sd">                           (B, T, U, D_out) or (B, T, s_range, D_out)</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">joint_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_activation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lin_enc</span><span class="p">(</span><span class="n">enc_out</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lin_dec</span><span class="p">(</span><span class="n">dec_out</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">no_projection</span><span class="p">:</span>
+            <span class="n">joint_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_activation</span><span class="p">(</span><span class="n">enc_out</span> <span class="o">+</span> <span class="n">dec_out</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">joint_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_activation</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lin_enc</span><span class="p">(</span><span class="n">enc_out</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lin_dec</span><span class="p">(</span><span class="n">dec_out</span><span class="p">)</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lin_out</span><span class="p">(</span><span class="n">joint_out</span><span class="p">)</span></div></div>
 </pre></div>

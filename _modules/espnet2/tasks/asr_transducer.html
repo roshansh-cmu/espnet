@@ -565,6 +565,12 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;token_list must be str or list&quot;</span><span class="p">)</span>
         <span class="n">vocab_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">token_list</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;scheduler_conf&quot;</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">model_conf</span><span class="p">[</span><span class="s2">&quot;warmup_steps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">scheduler_conf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;warmup_steps&quot;</span><span class="p">,</span> <span class="mi">25000</span>
+            <span class="p">)</span>
+
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Vocabulary size: </span><span class="si">{</span><span class="n">vocab_size</span><span class="w"> </span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># 1. frontend</span>

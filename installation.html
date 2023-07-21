@@ -350,10 +350,10 @@ $<span class="w"> </span>./setup_anaconda.sh<span class="w"> </span>miniconda<sp
 <p>This script tries to create a new miniconda if the output directory doesn’t exist.
 If you already have conda and you’ll use it then,</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>&lt;espnet-root&gt;/tools
-$<span class="w"> </span><span class="nv">CONDA_ROOT</span><span class="o">=</span><span class="si">${</span><span class="nv">CONDA_EXE</span><span class="si">}</span>/../..<span class="w">  </span><span class="c1"># CONDA_EXE is an environment variable set by ${CONDA_ROOT}/etc/profile.d/conda.sh</span>
-$<span class="w"> </span>./setup_anaconda.sh<span class="w"> </span><span class="si">${</span><span class="nv">CONDA_ROOT</span><span class="si">}</span><span class="w"> </span><span class="o">[</span>conda-env-name<span class="o">]</span><span class="w"> </span><span class="o">[</span>python-version<span class="o">]</span>
-<span class="c1"># e.g.</span>
-$<span class="w"> </span>./setup_anaconda.sh<span class="w"> </span><span class="si">${</span><span class="nv">CONDA_ROOT</span><span class="si">}</span><span class="w"> </span>espnet<span class="w"> </span><span class="m">3</span>.8
+$<span class="w"> </span><span class="nv">CONDA_ROOT</span><span class="o">=</span><span class="si">${${</span><span class="nv">CONDA_PREFIX</span><span class="si">}</span><span class="p">/../..  # CONDA_PREFIX is an environment variable set by </span><span class="si">${</span><span class="nv">CONDA_ROOT</span><span class="si">}</span><span class="p">/etc/profile.d/conda.sh</span>
+$<span class="p"> ./setup_anaconda.sh </span><span class="si">${</span><span class="nv">CONDA_ROOT</span><span class="si">}</span><span class="p"> [conda-env-name] [python-version]</span>
+<span class="p"># e.g.</span>
+$<span class="p"> ./setup_anaconda.sh </span><span class="si">${</span><span class="nv">CONDA_ROOT</span><span class="si">}</span><span class="p"> espnet 3.8</span>
 </pre></div>
 </div>
 </li>
@@ -412,7 +412,7 @@ so if you meet some installation error when running these recipe, you need to in
 <li><p>To install Warp Transducer</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>&lt;espnet-root&gt;/tools
 <span class="nv">cuda_root</span><span class="o">=</span>&lt;cuda-root&gt;<span class="w">  </span><span class="c1"># e.g. &lt;cuda-root&gt; = /usr/local/cuda</span>
-bach<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;. activate_python.sh; . ./setup_cuda_env.sh </span><span class="nv">$cuda_root</span><span class="s2">; ./installers/install_warp-transducer.sh&quot;</span>
+bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;. activate_python.sh; . ./setup_cuda_env.sh </span><span class="nv">$cuda_root</span><span class="s2">; ./installers/install_warp-transducer.sh&quot;</span>
 </pre></div>
 </div>
 </li>

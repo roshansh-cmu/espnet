@@ -224,6 +224,7 @@
 <span class="sd">        token_list: List of token units.</span>
 <span class="sd">        sym_space: Space symbol.</span>
 <span class="sd">        sym_blank: Blank symbol.</span>
+<span class="sd">        nstep: Maximum number of symbol expansions at each time step w/ mAES.</span>
 <span class="sd">        report_cer: Whether to compute CER.</span>
 <span class="sd">        report_wer: Whether to compute WER.</span>
 
@@ -236,17 +237,31 @@
         <span class="n">token_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
         <span class="n">sym_space</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">sym_blank</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">nstep</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
         <span class="n">report_cer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">report_wer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct an ErrorCalculatorTransducer object.&quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
+        <span class="c1"># (b-flo): Since the commit #8c9c851 we rely on the mAES algorithm for</span>
+        <span class="c1"># validation instead of the default algorithm.</span>
+        <span class="c1">#</span>
+        <span class="c1"># With the addition of k2 pruned transducer loss, the number of emitted symbols</span>
+        <span class="c1"># at each timestep can be restricted during training. Performing an unrestricted</span>
+        <span class="c1"># (/ unconstrained) decoding without regard to the training conditions can lead</span>
+        <span class="c1"># to huge performance degradation. It won&#39;t be an issue with mAES and the user</span>
+        <span class="c1"># can now control the number of emitted symbols during validation.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Also, under certain conditions, using the default algorithm can lead to a long</span>
+        <span class="c1"># decoding procedure due to the loop break condition. Other algorithms,</span>
+        <span class="c1"># such as mAES, won&#39;t be impacted by that.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">beam_search</span> <span class="o">=</span> <span class="n">BeamSearchTransducer</span><span class="p">(</span>
             <span class="n">decoder</span><span class="o">=</span><span class="n">decoder</span><span class="p">,</span>
             <span class="n">joint_network</span><span class="o">=</span><span class="n">joint_network</span><span class="p">,</span>
-            <span class="n">beam_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-            <span class="n">search_type</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">,</span>
+            <span class="n">beam_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">search_type</span><span class="o">=</span><span class="s2">&quot;maes&quot;</span><span class="p">,</span>
+            <span class="n">nstep</span><span class="o">=</span><span class="n">nstep</span><span class="p">,</span>
             <span class="n">score_norm</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
 
