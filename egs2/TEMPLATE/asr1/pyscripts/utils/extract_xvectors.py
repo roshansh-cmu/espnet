@@ -47,12 +47,12 @@ class XVExtractor:
     def __init__(self, args, device):
         self.toolkit = args.toolkit
         self.device = device
-        from speechbrain.dataio.preprocess import AudioNormalizer
 
-        self.audio_norm = AudioNormalizer()
         if self.toolkit == "speechbrain":
+            from speechbrain.dataio.preprocess import AudioNormalizer
             from speechbrain.pretrained import EncoderClassifier
 
+            self.audio_norm = AudioNormalizer()
             self.model = EncoderClassifier.from_hparams(
                 source=args.pretrained_model, run_opts={"device": device}
             )
@@ -142,7 +142,7 @@ def main(argv):
                 details = line.split()
                 spk2utt[details[0]] = details[1:]
 
-        wav_scp = SoundScpReader(os.path.join(args.in_folder, "wav.scp"))
+        wav_scp = SoundScpReader(os.path.join(args.in_folder, "wav.scp"), np.float32)
         os.makedirs(args.out_folder, exist_ok=True)
         writer_utt = kaldiio.WriteHelper(
             "ark,scp:{0}/xvector.ark,{0}/xvector.scp".format(args.out_folder)
