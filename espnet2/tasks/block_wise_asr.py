@@ -83,7 +83,6 @@ from espnet2.train.preprocessor import (
     CommonPreprocessor,
     CommonPreprocessor_multi,
 )
-from espnet2.train.trainer import Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import float_or_none, int_or_none, str2bool, str_or_none
@@ -413,7 +412,6 @@ class ASRTask(AbsTask):
         cls, args: argparse.Namespace, train: bool
     ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
         assert check_argument_types()
-        
 
         if args.use_preprocessor:
             try:

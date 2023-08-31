@@ -433,8 +433,6 @@ class ESPnetBlockASRModel(ESPnetASRModel):
             stats["acc"] = acc_att
             if self.final_block:
                 stats["final_acc"] = acc_att
-            if self.block_id > 2:
-                logging.warning(f"Error in Block ID block_id {self.block_id} is not 0, 1, or 2")
             stats[f"block_{self.block_id}_acc"] = acc_att
             stats[f"block_{self.block_id}_att_loss"] = loss_att.detach()
             stats["cer"] = cer_att

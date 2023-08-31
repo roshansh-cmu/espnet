@@ -88,8 +88,6 @@ class BlockConformerEncoder(ConformerEncoder):
         stochastic_depth_rate: Union[float, List[float]] = 0.0,
         layer_drop_rate: float = 0.0,
         max_pos_emb_len: int = 5000,
-        act_fun: str = "relu",
-        cos_reweight: bool = True,
         prompt_after_cnn: bool = False,
     ):
         assert check_argument_types()
@@ -121,19 +119,17 @@ class BlockConformerEncoder(ConformerEncoder):
             stochastic_depth_rate=stochastic_depth_rate,
             layer_drop_rate=layer_drop_rate,
             max_pos_emb_len=max_pos_emb_len,
-            act_fun=act_fun,
-            cos_reweight=cos_reweight,
-
         )
         self._output_size = output_size
-        
+
         self.prompt_after_cnn = prompt_after_cnn
         if prompt_after_cnn:
             self.init_prompt = torch.nn.Parameter(torch.randn(10, output_size))
             self.register_parameter("init_prompt", self.init_prompt)
-            self.prompt_generator = MultiHeadedAttention(n_head=1,n_feat=output_size,dropout_rate=0.1)
+            self.prompt_generator = MultiHeadedAttention(
+                n_head=1, n_feat=output_size, dropout_rate=0.1
+            )
             self.prev_prompts = [self.init_prompt]
-            
 
     def reset_prompt(self):
         self.prev_prompts = [self.init_prompt]
@@ -144,7 +140,7 @@ class BlockConformerEncoder(ConformerEncoder):
         ilens: torch.Tensor,
         prev_states: torch.Tensor = None,
         ctc: CTC = None,
-        enc_context : torch.Tensor = None,
+        enc_context: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Calculate forward propagation.
 
@@ -177,28 +173,41 @@ class BlockConformerEncoder(ConformerEncoder):
                     limit_size,
                 )
             if self.prompt_after_cnn:
-                prev_prompt = self.prev_prompts[-1].repeat(xs_pad.shape[0],1,1) if self.prev_prompts[-1].ndim == 2 else self.prev_prompts[-1]
-                masks = (~make_pad_mask(ilens+4*prev_prompt.shape[1])[:, None, :]).to(xs_pad.device)
+                prev_prompt = (
+                    self.prev_prompts[-1].repeat(xs_pad.shape[0], 1, 1)
+                    if self.prev_prompts[-1].ndim == 2
+                    else self.prev_prompts[-1]
+                )
+                masks = (
+                    ~make_pad_mask(ilens + 4 * prev_prompt.shape[1])[:, None, :]
+                ).to(xs_pad.device)
             else:
                 prev_prompt = None
-                
+
             # logging.warning(f"Prev Prompt Shape : {prev_prompt.shape}")
-            xs_pad, masks = self.embed(xs_pad, masks,enc_context=prev_prompt)
+            xs_pad, masks = self.embed(xs_pad, masks)
         else:
             xs_pad = self.embed(xs_pad)
-        
+
         if self.prompt_after_cnn:
-            mean_semantic_embedding = enc_context if enc_context is not None else torch.zeros((xs_pad[0].shape[0],1,self._output_size)).to(xs_pad[0].device)
+            mean_semantic_embedding = (
+                enc_context
+                if enc_context is not None
+                else torch.zeros((xs_pad[0].shape[0], 1, self._output_size)).to(
+                    xs_pad[0].device
+                )
+            )
             # mean_semantic_embedding = torch.mean(enc_context,dim=1).unsqueeze(1) if enc_context is not None else torch.zeros((xs_pad[0].shape[0],1,self._output_size)).to(xs_pad[0].device)
 
             ## Prev Semantic Embedding is Query and prev Prompt is key and value
             # logging.warning(f"Before Mean Semantic Embedding Shape : {mean_semantic_embedding.shape} Prev Prompt Shape : {prev_prompt.shape}")
-            current_prompt = self.prompt_generator(prev_prompt,mean_semantic_embedding,mean_semantic_embedding,mask=None)
+            current_prompt = self.prompt_generator(
+                prev_prompt, mean_semantic_embedding, mean_semantic_embedding, mask=None
+            )
             # logging.warning(f" After Mean Semantic Embedding Shape : {mean_semantic_embedding.shape} Prev Prompt Shape : {prev_prompt.shape} Current Prompt Shape : {current_prompt.shape} {xs_pad[0].shape} {xs_pad[1].shape} {masks.shape}")
             ## Concatenate prompt and input
-            xs_pad = (torch.cat([xs_pad[0],current_prompt],dim=1),xs_pad[1])
+            xs_pad = (torch.cat([xs_pad[0], current_prompt], dim=1), xs_pad[1])
             self.prev_prompts.append(current_prompt.detach())
-            
 
         intermediate_outs = []
         if len(self.interctc_layer_idx) == 0:
@@ -236,8 +245,8 @@ class BlockConformerEncoder(ConformerEncoder):
         olens = masks.squeeze(1).sum(1)
         if len(intermediate_outs) > 0:
             return (xs_pad, intermediate_outs), olens, None
-        
+
         if self.prompt_after_cnn:
-            xs_pad = xs_pad[:,10:,:]
+            xs_pad = xs_pad[:, 10:, :]
             olens = olens - 10
         return xs_pad, olens, None
