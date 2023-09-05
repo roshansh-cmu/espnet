@@ -40,6 +40,9 @@ from espnet2.utils.types import str2bool
 if torch.distributed.is_available():
     from torch.distributed import ReduceOp
 
+from torch.nn.functional import pad
+
+
 autocast_args = dict()
 if V(torch.__version__) >= V("1.6.0"):
     from torch.cuda.amp import GradScaler, autocast
@@ -226,6 +229,24 @@ class BlockTrainer(Trainer):
                                     < full_batch["speech"].shape[1]
                                     else full_batch["speech"][:, sample_index:]
                                 )
+
+                        ## PAD THE INPUT
+                        if block_inp.shape[1] < block_size:
+                            padlen = block_size - block_inp.shape[1]
+                            pad_tensor = (
+                                torch.zeros(
+                                    (block_inp.shape[0], padlen, block_inp.shape[2]),
+                                    device=block_inp.device,
+                                    dtype=block_inp.dtype,
+                                )
+                                if block_inp.ndim == 3
+                                else torch.zeros(
+                                    (block_inp.shape[0], padlen),
+                                    device=block_inp.device,
+                                    dtype=block_inp.dtype,
+                                )
+                            )
+                            block_inp = torch.cat((block_inp, pad_tensor), dim=1)
 
                         if (sample_index + block_size) >= full_batch["speech"].shape[
                             1
