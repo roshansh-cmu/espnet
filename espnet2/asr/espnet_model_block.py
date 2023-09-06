@@ -304,29 +304,12 @@ class ESPnetBlockASRModel(ESPnetASRModel):
             encoder_out_lens = outlens
 
         elif self.enc_context_method == "attentiongated":
-            if len(self.enc_context) >= 1 and self.block_id > 0:
+            if self.block_id > 0 and len(self.enc_context) >= 1:
                 prev_sem_emb, prevlens = (
                     self.enc_context[-1][0],
                     self.enc_context[-1][1],
                 )
                 topic_mask = None
-                # (
-                #     ~make_pad_mask(
-                #         self.topic_vector.size(1)
-                #         * torch.ones(
-                #             (len(prev_sem_emb),),
-                #             device=prev_sem_emb.device,
-                #             dtype=torch.long,
-                #         ),
-                #         maxlen=prev_sem_emb.size(1),
-                #     )
-                # )[:, None, :].to(prev_sem_emb.device)
-                # memory_mask2 = (
-                #     ~make_pad_mask(encoder_out_lens, maxlen=encoder_out.size(1))
-                # )[:, None, :].to(prev_sem_emb.device)
-                # logging.info(
-                #     f"Topic mask shape {topic_mask.shape} TOPIC {self.topic_vector.shape} Encoder out shape {encoder_out.shape}"
-                # )
 
                 current_topic_similarity = self.curr_block_attention(
                     encoder_out, self.topic_vector, self.topic_vector, topic_mask
@@ -576,7 +559,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 stats["final_acc"] = acc_att
             stats[f"block_{self.block_id}_acc"] = acc_att
             stats[f"block_{self.block_id}_att_loss"] = loss_att.detach()
-            if self.gating_factor is not None:
+            if self.enc_context_method == "attentiongated" and self.block_id > 0:
                 stats[f"block_{self.block_id}_gate_wt"] = torch.mean(
                     self.gating_factor.detach()
                 )

@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import os
 import socket
 from typing import Optional
@@ -98,6 +99,7 @@ class DistributedOption:
                 init_method=self.dist_init_method,
                 world_size=self.dist_world_size,
                 rank=self.dist_rank,
+                timeout=datetime.timedelta(seconds=54000),
             )
 
             # About distributed model:
