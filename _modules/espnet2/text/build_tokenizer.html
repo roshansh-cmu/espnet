@@ -169,6 +169,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.asr_transducer.html">espnet2.asr_transducer package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.gan_tts.html">espnet2.gan_tts package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.s2t.html">espnet2.s2t package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.s2st.html">espnet2.s2st package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.layers.html">espnet2.layers package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.st.html">espnet2.st package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../_gen/espnet2.hubert.html">espnet2.hubert package</a></li>
@@ -235,7 +236,9 @@
     <span class="n">nonsplit_symbol</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="c1"># tokenization encode (text2token) args, e.g. BPE dropout, only applied in training</span>
     <span class="n">encode_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">tokenizer_language</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;en&quot;</span><span class="p">,</span>
+    <span class="c1"># only use for whisper</span>
+    <span class="n">whisper_language</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">whisper_task</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">sot_asr</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AbsTokenizer</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A helper function to instantiate Tokenizer&quot;&quot;&quot;</span>
@@ -291,7 +294,10 @@
 
     <span class="k">elif</span> <span class="s2">&quot;whisper&quot;</span> <span class="ow">in</span> <span class="n">token_type</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">OpenAIWhisperTokenizer</span><span class="p">(</span>
-            <span class="n">model_type</span><span class="o">=</span><span class="n">bpemodel</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="n">tokenizer_language</span><span class="p">,</span> <span class="n">sot</span><span class="o">=</span><span class="n">sot_asr</span>
+            <span class="n">model_type</span><span class="o">=</span><span class="n">bpemodel</span><span class="p">,</span>
+            <span class="n">language</span><span class="o">=</span><span class="n">whisper_language</span> <span class="ow">or</span> <span class="s2">&quot;en&quot;</span><span class="p">,</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">whisper_task</span> <span class="ow">or</span> <span class="s2">&quot;transcribe&quot;</span><span class="p">,</span>
+            <span class="n">sot</span><span class="o">=</span><span class="n">sot_asr</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
