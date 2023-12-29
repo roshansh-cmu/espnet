@@ -354,6 +354,7 @@ class BeamSearch(torch.nn.Module):
             for j, part_j in zip(*self.beam(weighted_scores, part_ids)):
                 # will be (2 x beam at most)
                 if self.return_hs:
+                    logging.info(f"hs shape: {hs.shape} {hyp.hs.shape}")
                     new_hs = hyp.hs + [hs.squeeze(0)]
                 else:
                     new_hs = []
@@ -412,6 +413,11 @@ class BeamSearch(torch.nn.Module):
         else:
             maxlen = max(1, int(maxlenratio * inp.size(0)))
         minlen = int(minlenratio * inp.size(0))
+
+        ## Threshold
+        maxlen = min(maxlen, 200)
+        minlen = max(minlen, 50)
+
         logging.info("decoder input length: " + str(inp.shape[0]))
         logging.info("max output length: " + str(maxlen))
         logging.info("min output length: " + str(minlen))

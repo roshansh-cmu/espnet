@@ -1300,6 +1300,7 @@ class AbsTask(ABC):
             )
         else:
             # 6. Loads pre-trained model
+            logging.info(f"Init param is {args.init_param}")
             for p in args.init_param:
                 logging.info(f"Loading pretrained params from {p}")
                 load_pretrained_model(

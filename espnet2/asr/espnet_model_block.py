@@ -74,6 +74,9 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         block_length: int = 2,
         encoder_prompt: bool = False,
         detach_context: bool = False,
+        block_size: int = 249,
+        bce_weight: float = 0.0,
+        only_bce_loss: bool = False,
     ):
         assert check_argument_types()
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -139,6 +142,73 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 torch.nn.Linear(self.encoder._output_size * 2, 1, bias=True),
                 torch.nn.Sigmoid(),
             )
+        if self.enc_context_method == "attentiongatedv2":
+            # self.prev_block_attention = MultiHeadedAttention(
+            #     n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            # )
+            self.curr_block_attention = MultiHeadedAttention(
+                n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            )
+            self.prev_gater = torch.nn.Sequential(
+                torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+                # torch.nn.Sigmoid(),
+            )
+            self.curr_gater = torch.nn.Sequential(
+                torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+                # torch.nn.Sigmoid(),
+            )
+
+        if self.enc_context_method == "attentiongatedv4":
+            self.curr_block_attention = MultiHeadedAttention(
+                n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            )
+            # self.prev_gater = torch.nn.Sequential(
+            #     torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+            #     torch.nn.Sigmoid(),
+            # )
+            self.curr_gater = torch.nn.Sequential(
+                torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+                torch.nn.Sigmoid(),
+            )
+
+        if self.enc_context_method == "attentiongatedv5":
+            self.curr_block_attention = MultiHeadedAttention(
+                n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            )
+            # self.prev_gater = torch.nn.Sequential(
+            #     torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+            #     torch.nn.Sigmoid(),
+            # )
+            self.curr_gater = torch.nn.Sequential(
+                torch.nn.Linear(self.encoder._output_size, 1, bias=True),
+                torch.nn.Sigmoid(),
+            )
+            self.block_attention = MultiHeadedAttention(
+                n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            )
+
+        if self.enc_context_method == "lstm":
+            self.downprojector = torch.nn.Linear(self.encoder._output_size, 64)
+            self.updater = torch.nn.LSTMCell(64 * block_size, 64 * block_size)
+            self.upprojector = torch.nn.Linear(64, self.encoder._output_size)
+
+        if self.enc_context_method == "concatrelevance":
+            self.aux_criterion = torch.nn.BCEWithLogitsLoss(
+                weight=torch.Tensor([0.364]), reduction="sum"
+            )
+            self.curr_block_attention = MultiHeadedAttention(
+                n_head=4, n_feat=self.encoder._output_size, dropout_rate=0.2
+            )
+            self.curr_gater = torch.nn.Linear(self.encoder._output_size, 1, bias=True)
+            self.bce_weight = bce_weight
+            logging.warning(f"{self.curr_block_attention}")
+        
+        if self.enc_context_method == "concatrelevancerand":
+            self.rand_prob = 0.863
+        
+        self.binary_relevance = None
+        
+        self.only_bce_loss = only_bce_loss
 
     def reset_batch(self):
         self.enc_context = []
@@ -153,6 +223,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         speech_lengths: torch.Tensor,
         block_id: int = 0,
         final_block: bool = False,
+        binary_relevance: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Frontend + Encoder. Note that this method is used by asr_inference.py
 
@@ -223,17 +294,23 @@ class ESPnetBlockASRModel(ESPnetASRModel):
 
         if intermediate_outs is not None:
             return (encoder_out, intermediate_outs), encoder_out_lens
+        
+        encoder_out, encoder_out_lens, bce_loss = self.combine_encoder_context(
+                encoder_out, encoder_out_lens, binary_relevance=binary_relevance
+            )
+        if binary_relevance is not None:
+            return encoder_out, encoder_out_lens, bce_loss
+        else:
+            return encoder_out, encoder_out_lens
 
-        encoder_out, encoder_out_lens = self.combine_encoder_context(
-            encoder_out, encoder_out_lens
-        )
-
-        return encoder_out, encoder_out_lens
-
-    def combine_encoder_context(self, encoder_out, encoder_out_lens):
+    def combine_encoder_context(
+        self, encoder_out, encoder_out_lens, binary_relevance=None
+    ):
         ## Concatenation of prev encoder output - DONE
         ## Addition of prev block encoder output - DONE
         ## Gated Addition of attended context vector - DONE
+
+        bce_loss = None
 
         ## We want to only keep context from past block_length blocks
         if (
@@ -255,35 +332,44 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 attended_output = self.block_attention(
                     hs, encoder_out, encoder_out, memory_mask
                 )
-                output = encoder_out + self.gating_factor * attended_output
+                if encoder_out.shape[1] > hs.shape[1]:
+                    output = encoder_out
+                    output[:, : hs.shape[1], :] += self.gating_factor * attended_output
+                elif encoder_out.shape[1] < hs.shape[1]:
+                    output = self.gating_factor * attended_output
+                    output[:, : encoder_out.shape[1], :] += encoder_out
+                else:
+                    output = encoder_out + self.gating_factor * attended_output
             else:
                 output = encoder_out
             self.enc_context = [[encoder_out.detach(), encoder_out_lens]]
             encoder_out = output
 
-        # elif self.enc_context_method == "attentionv2":
-        #     if len(self.enc_context) >= 1 and self.block_id > 0:
-        #         hs, hlens = self.enc_context[-1][0], self.enc_context[-1][1]
-        #         memory_mask = (~make_pad_mask(hlens, maxlen=hs.size(1)))[:, None, :].to(
-        #             hs.device
-        #         )
-        #         try:
-        #             attended_output = self.block_attention(
-        #                 hs, encoder_out, encoder_out, memory_mask
-        #             )
-        #             output = hs + self.gating_factor * attended_output
-        #             outlens = torch.ones_like(hlens) * hs.size(1)
-        #         except:
-        #             logging.info(
-        #                 f"HS shape {hs.shape} Encoder out shape {encoder_out.shape}"
-        #             )
-        #             output = hs
-        #             outlens = hlens
-        #     else:
-        #         output = encoder_out
-        #         outlens = encoder_out_lens
-        #     self.enc_context = [[encoder_out.detach(), outlens]]
-        #     encoder_out = output
+        elif self.enc_context_method == "attentionv2":
+            if len(self.enc_context) >= 1 and self.block_id > 0:
+                hs, hlens = self.enc_context[-1][0], self.enc_context[-1][1]
+                memory_mask = (~make_pad_mask(hlens, maxlen=hs.size(1)))[:, None, :].to(
+                    hs.device
+                )
+                try:
+                    attended_output = self.block_attention(
+                        hs, encoder_out, encoder_out, memory_mask
+                    )
+                    if encoder_out.shape[1] > hs.shape[1]:
+                        output = encoder_out
+                    output = hs + self.gating_factor * attended_output
+                    outlens = torch.ones_like(hlens) * hs.size(1)
+                except:
+                    logging.info(
+                        f"HS shape {hs.shape} Encoder out shape {encoder_out.shape}"
+                    )
+                    output = hs
+                    outlens = hlens
+            else:
+                output = encoder_out
+                outlens = encoder_out_lens
+            self.enc_context = [[encoder_out.detach(), outlens]]
+            encoder_out = output
 
         elif self.enc_context_method == "attentionv3":
             if len(self.enc_context) >= 1 and self.block_id > 0:
@@ -291,6 +377,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 memory_mask = (~make_pad_mask(hlens, maxlen=hs.size(1)))[:, None, :].to(
                     hs.device
                 )
+
                 output = (
                     1 - self.gating_factor
                 ) * hs + self.gating_factor * encoder_out
@@ -317,6 +404,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 prev_topic_similarity = self.prev_block_attention(
                     prev_sem_emb, self.topic_vector, self.topic_vector, topic_mask
                 )
+
                 combined = torch.cat(
                     [
                         torch.mean(current_topic_similarity, dim=1),
@@ -325,10 +413,132 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                     dim=-1,
                 )
                 self.gating_factor = self.gater(combined).unsqueeze(-1)
-                output = (
-                    (1 - self.gating_factor) * prev_topic_similarity
-                    + self.gating_factor * current_topic_similarity
+                try:
+                    output = (
+                        (1 - self.gating_factor) * prev_topic_similarity
+                        + self.gating_factor * current_topic_similarity
+                    )
+                except:
+                    logging.info(
+                        f"Current topic similarity {current_topic_similarity.shape} Prev topic similarity {prev_topic_similarity.shape} Encoder out shape {encoder_out.shape} Prev sem emb shape {prev_sem_emb.shape} Topic vector shape {self.topic_vector.shape}"
+                    )
+                    output = prev_topic_similarity
+
+                outlens = torch.ones_like(prevlens) * output.size(1)
+            else:
+                output = encoder_out
+                outlens = encoder_out_lens
+            self.enc_context = [[encoder_out.detach(), outlens]]
+            encoder_out = output
+            encoder_out_lens = outlens
+        elif self.enc_context_method == "attentiongatedv2":
+            if self.block_id > 0 and len(self.enc_context) >= 1:
+                enc_out = encoder_out.clone().detach()
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
                 )
+                topic_mask = None
+
+                current_topic_similarity = self.curr_block_attention(
+                    enc_out, self.topic_vector, self.topic_vector, topic_mask
+                )
+                prev_topic_similarity = self.curr_block_attention(
+                    prev_sem_emb, self.topic_vector, self.topic_vector, topic_mask
+                )
+
+                curr_term = self.curr_gater(torch.mean(current_topic_similarity, dim=1))
+                prev_term = self.prev_gater(torch.mean(prev_topic_similarity, dim=1))
+                self.gating_factor = torch.cat([prev_term, curr_term], dim=-1)
+                self.gating_factor = torch.nn.functional.softmax(
+                    self.gating_factor, dim=-1
+                )
+                try:
+                    output = (
+                        self.gating_factor[:, 0].unsqueeze(-1).unsqueeze(-1)
+                        * prev_sem_emb
+                        + self.gating_factor[:, 1].unsqueeze(-1).unsqueeze(-1)
+                        * encoder_out
+                    )
+                except:
+                    logging.info(
+                        f"Current topic similarity {current_topic_similarity.shape} Prev topic similarity {prev_topic_similarity.shape} Encoder out shape {encoder_out.shape} Prev sem emb shape {prev_sem_emb.shape} Topic vector shape {self.topic_vector.shape}"
+                    )
+                    output = prev_topic_similarity
+
+                outlens = torch.ones_like(prevlens) * output.size(1)
+            else:
+                output = encoder_out
+                outlens = encoder_out_lens
+            self.enc_context = [[encoder_out.detach(), outlens]]
+            encoder_out = output
+            encoder_out_lens = outlens
+
+        elif self.enc_context_method == "attentiongatedv4":
+            if self.block_id > 0 and len(self.enc_context) >= 1:
+                enc_out = encoder_out.clone().detach()
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
+                )
+                topic_mask = None
+
+                current_topic_similarity = self.curr_block_attention(
+                    enc_out, self.topic_vector, self.topic_vector, topic_mask
+                )
+                self.gating_factor = self.curr_gater(
+                    torch.mean(current_topic_similarity, dim=1)
+                )
+                try:
+                    output = (
+                        prev_sem_emb + self.gating_factor.unsqueeze(-1) * encoder_out
+                    )
+                except:
+                    # logging.info(
+                    #     f"Current topic similarity {current_topic_similarity.shape} Encoder out shape {encoder_out.shape} Prev sem emb shape {prev_sem_emb.shape} Topic vector shape {self.topic_vector.shape}"
+                    # )
+                    output = encoder_out
+
+                outlens = torch.ones_like(prevlens) * output.size(1)
+            else:
+                output = encoder_out
+                outlens = encoder_out_lens
+
+            self.enc_context = [[encoder_out.detach(), encoder_out_lens]]
+            encoder_out = output
+            encoder_out_lens = outlens
+
+        elif self.enc_context_method == "attentiongatedv5":
+            if self.block_id > 0 and len(self.enc_context) >= 1:
+                enc_out = encoder_out.clone().detach()
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
+                )
+                topic_mask = None
+
+                current_topic_similarity = self.curr_block_attention(
+                    enc_out, self.topic_vector, self.topic_vector, topic_mask
+                )
+                self.gating_factor = self.curr_gater(
+                    torch.mean(current_topic_similarity, dim=1)
+                )
+                memory_mask = (~make_pad_mask(prevlens, maxlen=prev_sem_emb.size(1)))[
+                    :, None, :
+                ].to(prev_sem_emb.device)
+                attended_output = self.block_attention(
+                    prev_sem_emb, encoder_out, encoder_out, memory_mask
+                )
+                try:
+                    output = (
+                        prev_sem_emb
+                        + self.gating_factor.unsqueeze(-1) * attended_output
+                    )
+                except:
+                    # logging.info(
+                    #     f"Current topic similarity {current_topic_similarity.shape} Encoder out shape {encoder_out.shape} Prev sem emb shape {prev_sem_emb.shape} Topic vector shape {self.topic_vector.shape}"
+                    # )
+                    output = encoder_out
 
                 outlens = torch.ones_like(prevlens) * output.size(1)
             else:
@@ -394,20 +604,156 @@ class ESPnetBlockASRModel(ESPnetASRModel):
             encoder_out = output
             encoder_out_lens = output_lens
 
-        elif self.enc_context_method == "add":
-            if len(self.enc_context) >= 1 and self.block_id > 0:
-                output = (
-                    torch.sum(torch.stack(self.enc_context, dim=0), dim=0) + encoder_out
+        elif self.enc_context_method == "concatrelevance":
+            if len(self.enc_context) > 0 and self.block_id > 0:
+                ## Calculate Pred Relevance
+                enc_out = encoder_out.clone().detach()
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
                 )
+                topic_mask = None
+                current_topic_similarity = torch.nn.functional.relu(self.curr_block_attention(
+                    enc_out, self.topic_vector, self.topic_vector, topic_mask
+                ))
+                pred_relevance = self.curr_gater(
+                    torch.mean(current_topic_similarity, dim=1)
+                ).squeeze(-1)
+                if binary_relevance is not None:
+                    bce_loss = self.aux_criterion(pred_relevance, binary_relevance.float())
+                else:
+                    binary_relevance = torch.where(
+                        torch.sigmoid(pred_relevance) > 0.5, 1, 0
+                    )
+                    bce_loss = None
+                self.gating_factor = torch.sigmoid(pred_relevance)
+
+                context = [x for x in self.enc_context[0][0].clone()]
+                context_lens = self.enc_context[0][1].clone()
+                prev_ctx = self.enc_context[1:] if len(self.enc_context) > 1 else []
+                for prev_context, prev_lens in prev_ctx + [
+                    [encoder_out, encoder_out_lens]
+                ]:
+                    for k, x in enumerate(context):
+                        if binary_relevance[k] == 1:
+                            context[k] = torch.cat(
+                                [
+                                    x[: context_lens[k], :],
+                                    prev_context[k][: prev_lens[k], :],
+                                ],
+                                dim=0,
+                            )
+                            context_lens[k] += prev_lens[k]
+
+                output = pad_list(context, pad_value=0.0)
+                output_lens = context_lens
             else:
                 output = encoder_out
-            self.enc_context.append(encoder_out.detach(), encoder_out_lens)
+                output_lens = encoder_out_lens
+
+            self.enc_context.append([encoder_out.detach(), encoder_out_lens])
+            encoder_out = output
+            
+        elif self.enc_context_method == "concatrelevancerand":
+
+            if len(self.enc_context) > 0 and self.block_id > 0:
+                ## Calculate Pred Relevance
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
+                )
+                pred_relevance = torch.rand_like(encoder_out[:,0,0])
+                pred_relevance = torch.where(pred_relevance > self.rand_prob, 1, 0) 
+                binary_relevance = pred_relevance if binary_relevance is None else binary_relevance
+                            
+                self.gating_factor = torch.sigmoid(pred_relevance)
+
+                context = [x for x in self.enc_context[0][0].clone()]
+                context_lens = self.enc_context[0][1].clone()
+                prev_ctx = self.enc_context[1:] if len(self.enc_context) > 1 else []
+                
+                for prev_context, prev_lens in prev_ctx + [
+                    [encoder_out, encoder_out_lens]
+                ]:
+                    for k, x in enumerate(context):
+                        if binary_relevance[k] == 1:
+                            context[k] = torch.cat(
+                                [
+                                    x[: context_lens[k], :],
+                                    prev_context[k][: prev_lens[k], :],
+                                ],
+                                dim=0,
+                            )
+                            context_lens[k] += prev_lens[k]
+
+                output = pad_list(context, pad_value=0.0)
+                output_lens = context_lens
+            else:
+                output = encoder_out
+                output_lens = encoder_out_lens
+
+            self.enc_context = [[output.detach(), output_lens]]
+
+            encoder_out = output
+            encoder_out_lens = output_lens
+
+        elif self.enc_context_method == "lstm":
+            if len(self.enc_context) >= 1 and self.block_id > 0:
+                enc_out = encoder_out.clone().detach()
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
+                )
+                downprojected_prev_sem_emb = self.downprojector(prev_sem_emb)
+                downprojected_prev_sem_emb = downprojected_prev_sem_emb.reshape(
+                    downprojected_prev_sem_emb.shape[0], -1
+                )
+                downprojected_enc_out = self.downprojector(enc_out)
+                downprojected_enc_out = downprojected_enc_out.reshape(
+                    downprojected_enc_out.shape[0], -1
+                )
+                output, _ = self.updater(
+                    downprojected_enc_out,
+                    (downprojected_prev_sem_emb, downprojected_prev_sem_emb),
+                )
+                output = output.reshape(output.shape[0], -1, 64)
+                output = self.upprojector(output)
+                outlens = torch.ones_like(prevlens) * output.size(1)
+            else:
+                output = encoder_out
+                output_lens = encoder_out_lens
+
+            self.enc_context.append([encoder_out.detach(), encoder_out_lens])
+            encoder_out = output
+
+        elif self.enc_context_method == "add":
+            if len(self.enc_context) >= 1 and self.block_id > 0:
+                prev_sem_emb, prevlens = (
+                    self.enc_context[-1][0],
+                    self.enc_context[-1][1],
+                )
+                if encoder_out.shape == prev_sem_emb.shape:
+                    output = prev_sem_emb + encoder_out
+                else:
+                    if prev_sem_emb.shape[1] > encoder_out.shape[1]:
+                        output = prev_sem_emb
+                        output[:, : encoder_out.shape[1], :] += encoder_out
+                    else:
+                        output = encoder_out
+                        output[:, : prev_sem_emb.shape[1], :] += prev_sem_emb
+            else:
+                output = encoder_out
+
+            self.enc_context.append([encoder_out.detach(), encoder_out_lens])
             encoder_out = output
 
         elif self.enc_context_method == "han":
             self.enc_context.append([encoder_out.detach(), encoder_out_lens])
 
-        return encoder_out, encoder_out_lens
+        elif self.enc_context_method == "none":
+            self.enc_context = [[encoder_out.detach(), encoder_out_lens]]
+
+        return encoder_out, encoder_out_lens, bce_loss
 
     def forward(
         self,
@@ -417,6 +763,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         text_lengths: torch.Tensor,
         block_id: int = 0,
         final_block: bool = False,
+        binary_relevance: torch.Tensor = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
@@ -440,22 +787,70 @@ class ESPnetBlockASRModel(ESPnetASRModel):
 
         text[text == -1] = self.ignore_id
 
+
+        self.binary_relevance = binary_relevance
         # for data-parallel
         text = text[:, : text_lengths.max()]
 
         # 1. Encoder
-        encoder_out, encoder_out_lens = self.encode(
-            speech, speech_lengths, block_id=block_id, final_block=final_block
-        )
-        intermediate_outs = None
-        if isinstance(encoder_out, tuple):
-            intermediate_outs = encoder_out[1]
-            encoder_out = encoder_out[0]
+        if binary_relevance is not None:
+            encoder_out, encoder_out_lens, bce_loss = self.encode(
+                speech,
+                speech_lengths,
+                block_id=block_id,
+                final_block=final_block,
+                binary_relevance=binary_relevance,
+            )
+        else:
+            encoder_out, encoder_out_lens = self.encode(
+                speech, speech_lengths, block_id=block_id, final_block=final_block
+            )
+            bce_loss = None
 
         loss_att, acc_att, cer_att, wer_att = None, None, None, None
         loss_ctc, cer_ctc = None, None
         loss_transducer, cer_transducer, wer_transducer = None, None, None
         stats = dict()
+
+        # if self.only_bce_loss and self.block_id > 0:
+        #     if bce_loss is not None:
+        #         loss =  bce_loss
+        #     else:
+        #         logging.info(f"Block ID {self.block_id} BCE Loss {bce_loss} {binary_relevance}")
+        #         # loss = torch.zeros((1,),dtype=torch.float32,device=encoder_out.device)
+            
+        #     stats["loss"] = loss.detach()
+
+        #     if self.enc_context_method == "concatrelevance" and self.block_id > 0:
+        #         # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+        #         weights = self.gating_factor.detach()
+        #         # stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights)
+        #         # stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+        #         #     weights
+        #         # )
+        #         if bce_loss is not None:
+        #             # stats[f"block_{self.block_id}_bce_loss"] = bce_loss.detach()
+        #             stats[f"bce_loss"] = bce_loss.detach()
+        #         pred_binary_relevance = torch.where(
+        #                 weights > 0.5, 1, 0
+        #         ).long()
+        #         if binary_relevance is not None:
+        #             stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
+        #             stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
+        #             pred_zero = torch.where(binary_relevance==0, 1, 0).long()
+        #             stats[f"relevance_acc0_len"] = len(binary_relevance[binary_relevance==0])
+        #             stats[f"relevance_acc0"] = (weights[pred_zero==1]==binary_relevance[binary_relevance==0]).sum()/len(binary_relevance[binary_relevance==0])
+            
+        #     # force_gatherable: to-device and to-tensor if scalar for DataParallel
+        #     loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
+        #     return loss, stats, weight
+
+        intermediate_outs = None
+        if isinstance(encoder_out, tuple):
+            intermediate_outs = encoder_out[1]
+            encoder_out = encoder_out[0]
+
+        
 
         # 1. CTC branch
         if self.ctc_weight != 0.0:
@@ -552,17 +947,78 @@ class ESPnetBlockASRModel(ESPnetASRModel):
             else:
                 loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
 
+            if bce_loss is not None:
+                # logging.info(f"BCE Loss {bce_loss} Loss {loss}")
+                loss += (self.bce_weight * bce_loss)
+                
+                # logging.info(f"Loss {loss}")
             # Collect Attn branch stats
             stats["loss_att"] = loss_att.detach() if loss_att is not None else None
             stats["acc"] = acc_att
             if self.final_block:
                 stats["final_acc"] = acc_att
             stats[f"block_{self.block_id}_acc"] = acc_att
-            stats[f"block_{self.block_id}_att_loss"] = loss_att.detach()
+            # stats[f"block_{self.block_id}_att_loss"] = loss_att.detach()
             if self.enc_context_method == "attentiongated" and self.block_id > 0:
                 stats[f"block_{self.block_id}_gate_wt"] = torch.mean(
                     self.gating_factor.detach()
                 )
+            if self.enc_context_method == "attentiongatedv2" and self.block_id > 0:
+                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+                weights = self.gating_factor.detach()
+                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 1])
+                stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+                    weights[:, 1]
+                )
+                stats[f"block_{self.block_id}_prev_gate_wt_std"] = torch.std(
+                    weights[:, 0]
+                )
+
+            if self.enc_context_method == "attentiongatedv4" and self.block_id > 0:
+                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+                weights = self.gating_factor.detach()
+                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
+                # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+                    weights[:, 0]
+                )
+                # stats[f"block_{self.block_id}_prev_gate_wt_std"] = torch.std(
+                #     weights[:, 0]
+                # )
+
+            if self.enc_context_method == "attentiongatedv5" and self.block_id > 0:
+                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+                weights = self.gating_factor.detach()
+                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
+                # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+                    weights[:, 0]
+                )
+            if self.enc_context_method == "concatrelevance" and self.block_id > 0:
+                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+                weights = self.gating_factor.detach()
+                if bce_loss is not None:
+                    stats[f"bce_loss"] = bce_loss.detach()
+                # stats[f"block_{self.block_id}_gt_binary_relevance_mean"] = torch.mean(
+                #     binary_relevance
+                # )
+                # stats[f"block_{self.block_id}_gt_binary_relevance_std"] = torch.std(
+                #     binary_relevance
+                # )
+                pred_binary_relevance = torch.where(
+                        weights > 0.5, 1, 0
+                    ).long()
+                if binary_relevance is not None:
+                    stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
+                    pred_zero = torch.where(binary_relevance==0, 1, 0).long()
+                    # stats[f"relevance_acc0"] = (weights[pred_zero==1]==binary_relevance[binary_relevance==0]).sum()/len(binary_relevance[binary_relevance==0])
+                    stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
+            if self.enc_context_method == "concatrelevancerand" and self.block_id > 0:
+                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+                weights = self.gating_factor.detach()
+                if bce_loss is not None:
+                    stats[f"bce_loss"] = bce_loss.detach()
             stats["cer"] = cer_att
             stats["wer"] = wer_att
 
@@ -582,7 +1038,15 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         ys_pad_lens: torch.Tensor,
         return_hs: bool = False,
     ):
-        return_hs = True if self.enc_context_method == "attentiongated" else False
+        return_hs = (
+            True
+            if self.enc_context_method == "attentiongated"
+            or self.enc_context_method == "attentiongatedv2"
+            or self.enc_context_method == "attentiongatedv4"
+            or self.enc_context_method == "attentiongatedv5"
+            or self.enc_context_method == "concatrelevance"
+            else False
+        )
         if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
             ys_pad = torch.cat(
                 [
@@ -593,8 +1057,29 @@ class ESPnetBlockASRModel(ESPnetASRModel):
             )
             ys_pad_lens += 1
 
-        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
-        ys_in_lens = ys_pad_lens + 1
+        
+
+        if self.binary_relevance is not None and self.block_id > 0:
+            
+            # logging.info(f"Binary relevance shape {self.binary_relevance.shape}")
+            relevant_indices = torch.nonzero(self.binary_relevance, as_tuple=False).squeeze(-1)
+            assert len(relevant_indices.shape) == 1 and len(relevant_indices) > 0, f"Relevant indices shape {relevant_indices.shape} {relevant_indices}"
+            # logging.info(f"Binary relevance shape {self.binary_relevance.shape} Relevant indices shape {relevant_indices.shape} YS PAD {ys_pad.shape} YS IN PAD {ys_in_pad.shape} YS OUT PAD {ys_out_pad.shape} YS PAD LENS {ys_pad_lens.shape} YS IN LENS {ys_in_lens.shape} ENCODER OUT {encoder_out.shape} ENCODER OUT LENS {encoder_out_lens.shape}")
+            ys_pad_lens = ys_pad_lens[relevant_indices]
+            ys_pad = ys_pad[relevant_indices,:]
+            encoder_out = encoder_out[relevant_indices,:,:]
+            encoder_out_lens = encoder_out_lens[relevant_indices]
+            max_enc_len = encoder_out_lens.max()
+            encoder_out = encoder_out[:,:max_enc_len,:]
+            max_ys_len = ys_pad_lens.max()
+            ys_pad = ys_pad[:,:max_ys_len]
+            ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
+            ys_in_lens = ys_pad_lens + 1
+            # logging.info(f"Binary relevance shape {self.binary_relevance.shape} Relevant indices shape {relevant_indices.shape} YS PAD {ys_pad.shape} YS IN PAD {ys_in_pad.shape} YS OUT PAD {ys_out_pad.shape} YS PAD LENS {ys_pad_lens.shape} YS IN LENS {ys_in_lens.shape} ENCODER OUT {encoder_out.shape} ENCODER OUT LENS {encoder_out_lens.shape}")
+
+        else:
+            ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
+            ys_in_lens = ys_pad_lens + 1
 
         # 2. Decoder
         if self.block_id > 0 and self.dec_context_method == "han":

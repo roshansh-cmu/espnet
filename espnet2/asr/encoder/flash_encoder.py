@@ -1,7 +1,7 @@
 # Copyright 2020 Tomoki Hayashi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-"""Conformer encoder definition."""
+"""Flash Self-Attention Augmented Conformer encoder definition."""
 
 import logging
 from typing import List, Optional, Tuple, Union
@@ -14,18 +14,13 @@ from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet.nets.pytorch_backend.conformer.convolution import ConvolutionModule
 from espnet.nets.pytorch_backend.conformer.encoder_layer import EncoderLayer
 from espnet.nets.pytorch_backend.nets_utils import get_activation, make_pad_mask
-from espnet.nets.pytorch_backend.transformer.attention import (
-    LegacyRelPositionMultiHeadedAttention,
-    MultiHeadedAttention,
-    RelPositionMultiHeadedAttention,
-    
-)
 from espnet.nets.pytorch_backend.transformer.embedding import (
     LegacyRelPositionalEncoding,
     PositionalEncoding,
     RelPositionalEncoding,
     ScaledPositionalEncoding,
 )
+from espnet.nets.pytorch_backend.transformer.flash_attention import FlashAttention
 from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 from espnet.nets.pytorch_backend.transformer.multi_layer_conv import (
     Conv1dLinear,
@@ -39,6 +34,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling1,
     Conv2dSubsampling2,
+    Conv1dSubsampling2,
     Conv2dSubsampling6,
     Conv2dSubsampling8,
     TooShortUttError,
@@ -46,8 +42,8 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
 )
 
 
-class ConformerEncoder(AbsEncoder):
-    """Conformer encoder module.
+class FlashConformerEncoder(AbsEncoder):
+    """Flash-Conformer encoder module.
 
     Args:
         input_size (int): Input dimension.
@@ -91,7 +87,7 @@ class ConformerEncoder(AbsEncoder):
         dropout_rate: float = 0.1,
         positional_dropout_rate: float = 0.1,
         attention_dropout_rate: float = 0.0,
-        input_layer: Optional[str] = "conv2d",
+        input_layer: str = "conv2d",
         normalize_before: bool = True,
         concat_after: bool = False,
         positionwise_layer_type: str = "linear",
@@ -99,7 +95,7 @@ class ConformerEncoder(AbsEncoder):
         macaron_style: bool = False,
         rel_pos_type: str = "legacy",
         pos_enc_layer_type: str = "rel_pos",
-        selfattention_layer_type: str = "rel_selfattn",
+        selfattention_layer_type: str = "flash_selfattn",
         activation_type: str = "swish",
         use_cnn_module: bool = True,
         zero_triu: bool = False,
@@ -118,8 +114,6 @@ class ConformerEncoder(AbsEncoder):
         if rel_pos_type == "legacy":
             if pos_enc_layer_type == "rel_pos":
                 pos_enc_layer_type = "legacy_rel_pos"
-            if selfattention_layer_type == "rel_selfattn":
-                selfattention_layer_type = "legacy_rel_selfattn"
         elif rel_pos_type == "latest":
             assert selfattention_layer_type != "legacy_rel_selfattn"
             assert pos_enc_layer_type != "legacy_rel_pos"
@@ -132,10 +126,10 @@ class ConformerEncoder(AbsEncoder):
         elif pos_enc_layer_type == "scaled_abs_pos":
             pos_enc_class = ScaledPositionalEncoding
         elif pos_enc_layer_type == "rel_pos":
-            assert selfattention_layer_type == "rel_selfattn"
+            assert selfattention_layer_type == "flash_selfattn"
             pos_enc_class = RelPositionalEncoding
         elif pos_enc_layer_type == "legacy_rel_pos":
-            assert selfattention_layer_type == "legacy_rel_selfattn"
+            assert selfattention_layer_type == "flash_selfattn"
             pos_enc_class = LegacyRelPositionalEncoding
             logging.warning(
                 "Using legacy_rel_pos and it will be deprecated in the future."
@@ -166,6 +160,13 @@ class ConformerEncoder(AbsEncoder):
             )
         elif input_layer == "conv2d2":
             self.embed = Conv2dSubsampling2(
+                input_size,
+                output_size,
+                dropout_rate,
+                pos_enc_class(output_size, positional_dropout_rate, max_pos_emb_len),
+            )
+        elif input_layer == "conv1d2":
+            self.embed = Conv1dSubsampling2(
                 input_size,
                 output_size,
                 dropout_rate,
@@ -229,33 +230,9 @@ class ConformerEncoder(AbsEncoder):
         else:
             raise NotImplementedError("Support only linear or conv1d.")
 
-        if selfattention_layer_type == "selfattn":
-            encoder_selfattn_layer = MultiHeadedAttention
-            encoder_selfattn_layer_args = (
-                attention_heads,
-                output_size,
-                attention_dropout_rate,
-            )
-        elif selfattention_layer_type == "legacy_rel_selfattn":
-            assert pos_enc_layer_type == "legacy_rel_pos"
-            encoder_selfattn_layer = LegacyRelPositionMultiHeadedAttention
-            encoder_selfattn_layer_args = (
-                attention_heads,
-                output_size,
-                attention_dropout_rate,
-            )
-            logging.warning(
-                "Using legacy_rel_selfattn and it will be deprecated in the future."
-            )
-        elif selfattention_layer_type == "rel_selfattn":
-            assert pos_enc_layer_type == "rel_pos"
-            encoder_selfattn_layer = RelPositionMultiHeadedAttention
-            encoder_selfattn_layer_args = (
-                attention_heads,
-                output_size,
-                attention_dropout_rate,
-                zero_triu,
-            )
+        if selfattention_layer_type == "flash_selfattn":
+            encoder_selfattn_layer = FlashAttention
+            encoder_selfattn_layer_args = (attention_heads,output_size, attention_dropout_rate)
         else:
             raise ValueError("unknown encoder_attn_layer: " + selfattention_layer_type)
 
@@ -323,6 +300,7 @@ class ConformerEncoder(AbsEncoder):
         if (
             isinstance(self.embed, Conv2dSubsampling)
             or isinstance(self.embed, Conv2dSubsampling1)
+            or isinstance(self.embed, Conv1dSubsampling2)
             or isinstance(self.embed, Conv2dSubsampling2)
             or isinstance(self.embed, Conv2dSubsampling6)
             or isinstance(self.embed, Conv2dSubsampling8)

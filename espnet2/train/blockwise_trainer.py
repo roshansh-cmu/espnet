@@ -199,9 +199,7 @@ class BlockTrainer(Trainer):
                 num_blocks = np.ceil(float(full_batch["speech"].shape[1]) / block_size)
                 # logging.info(f"num_blocks: {num_blocks} Size of the input: {full_batch['speech'].shape[1]} Block size: {block_size}")
                 while sample_index < full_batch["speech"].shape[1]:
-                    with reporter.measure_time("iter_time"):
-                        # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index}")
-                        if (
+                    if (
                             full_batch["speech"].shape[1] - (sample_index + block_size)
                             < 100
                         ):
@@ -210,63 +208,76 @@ class BlockTrainer(Trainer):
                                 if full_batch["speech"].ndim == 3
                                 else full_batch["speech"][:, sample_index:]
                             )
-                        else:
-                            if full_batch["speech"].ndim == 3:
-                                block_inp = (
-                                    full_batch["speech"][
-                                        :, sample_index : sample_index + block_size, ::
-                                    ]
-                                    if sample_index + block_size
-                                    < full_batch["speech"].shape[1]
-                                    else full_batch["speech"][:, sample_index:, ::]
-                                )
-                            else:
-                                block_inp = (
-                                    full_batch["speech"][
-                                        :, sample_index : sample_index + block_size
-                                    ]
-                                    if sample_index + block_size
-                                    < full_batch["speech"].shape[1]
-                                    else full_batch["speech"][:, sample_index:]
-                                )
-
-                        ## PAD THE INPUT
-                        if block_inp.shape[1] < block_size:
-                            padlen = block_size - block_inp.shape[1]
-                            pad_tensor = (
-                                torch.zeros(
-                                    (block_inp.shape[0], padlen, block_inp.shape[2]),
-                                    device=block_inp.device,
-                                    dtype=block_inp.dtype,
-                                )
-                                if block_inp.ndim == 3
-                                else torch.zeros(
-                                    (block_inp.shape[0], padlen),
-                                    device=block_inp.device,
-                                    dtype=block_inp.dtype,
-                                )
+                    else:
+                        if full_batch["speech"].ndim == 3:
+                            block_inp = (
+                                full_batch["speech"][
+                                    :, sample_index : sample_index + block_size, ::
+                                ]
+                                if sample_index + block_size
+                                < full_batch["speech"].shape[1]
+                                else full_batch["speech"][:, sample_index:, ::]
                             )
-                            block_inp = torch.cat((block_inp, pad_tensor), dim=1)
-
-                        if (sample_index + block_size) >= full_batch["speech"].shape[
-                            1
-                        ] - 1:
-                            final_block = True
                         else:
-                            final_block = False
+                            block_inp = (
+                                full_batch["speech"][
+                                    :, sample_index : sample_index + block_size
+                                ]
+                                if sample_index + block_size
+                                < full_batch["speech"].shape[1]
+                                else full_batch["speech"][:, sample_index:]
+                            )
 
-                        block_inp_lens = (block_inp.shape[1]) * torch.ones_like(
-                            full_batch["speech_lengths"]
+                    ## PAD THE INPUT
+                    if block_inp.shape[1] < block_size:
+                        padlen = block_size - block_inp.shape[1]
+                        pad_tensor = (
+                            torch.zeros(
+                                (block_inp.shape[0], padlen, block_inp.shape[2]),
+                                device=block_inp.device,
+                                dtype=block_inp.dtype,
+                            )
+                            if block_inp.ndim == 3
+                            else torch.zeros(
+                                (block_inp.shape[0], padlen),
+                                device=block_inp.device,
+                                dtype=block_inp.dtype,
+                            )
                         )
+                        block_inp = torch.cat((block_inp, pad_tensor), dim=1)
 
-                        for j, l in enumerate(block_inp_lens):
-                            if full_batch["speech_lengths"][j] < sample_index + l:
-                                l = sample_index + l - full_batch["speech_lengths"][j]
+                    if (sample_index + block_size) >= full_batch["speech"].shape[
+                        1
+                    ] - 1:
+                        final_block = True
+                    else:
+                        final_block = False
 
-                        batch["speech"] = block_inp
-                        batch["speech_lengths"] = block_inp_lens
-                        batch["block_id"] = block_idx
-                        batch["final_block"] = final_block
+                    block_inp_lens = (block_inp.shape[1]) * torch.ones_like(
+                        full_batch["speech_lengths"]
+                    )
+
+                    for j, l in enumerate(block_inp_lens):
+                        if full_batch["speech_lengths"][j] < sample_index + l:
+                            l = sample_index + l - full_batch["speech_lengths"][j]
+
+                    batch["speech"] = block_inp
+                    batch["speech_lengths"] = block_inp_lens
+                    batch["block_id"] = block_idx
+                    batch["final_block"] = final_block
+                    
+                    if "binary_relevance" in full_batch:
+                        batch["binary_relevance"] = full_batch["binary_relevance"][
+                            :, block_idx
+                        ]
+                        if torch.sum(torch.sum(batch["binary_relevance"])) == 0:
+                            sample_index += block_inp.shape[1]
+                            block_idx += 1
+                            continue
+
+                    with reporter.measure_time("iter_time"):
+                        # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index}")
+                        
 
                         batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
                         if no_forward_run:
@@ -313,8 +324,11 @@ class BlockTrainer(Trainer):
                             **autocast_args,
                         ):
                             with reporter.measure_time(f"forward_time"):
-                                retval = model(**batch, find_unused_parameters=True)
-
+                                if block_idx == 0:
+                                    retval = model(**batch, find_unused_parameters=True)
+                                else:
+                                    # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index}")
+                                    retval = model(**batch, find_unused_parameters=False)
                                 # Note(kamo):
                                 # Supporting two patterns for the returned value from the model
                                 #   a. dict type
@@ -487,7 +501,7 @@ class BlockTrainer(Trainer):
 
                     sample_index += block_inp.shape[1]
                     block_idx += 1
-                    # logging.info(f"Updated block_idx: {block_idx} i={i} block_size={block_size}")
+                    # logging.info(f"Updated block_idx: {block_idx} block_size={block_size}")
 
         else:
             if distributed:
@@ -531,11 +545,12 @@ class BlockTrainer(Trainer):
 
             # model.reset_batch()
 
-            block_id = 0
 
             batch["utt_id"] = utt_id
             if block_size is not None:
                 sample_index = 0
+                block_id = 0
+
                 while sample_index < full_batch["speech"].shape[1]:
                     if (
                         full_batch["speech"].shape[1] - (sample_index + block_size)
@@ -566,6 +581,24 @@ class BlockTrainer(Trainer):
                                 else full_batch["speech"][:, sample_index:]
                             )
 
+                    ## PAD THE INPUT
+                    if block_inp.shape[1] < block_size:
+                        padlen = block_size - block_inp.shape[1]
+                        pad_tensor = (
+                            torch.zeros(
+                                (block_inp.shape[0], padlen, block_inp.shape[2]),
+                                device=block_inp.device,
+                                dtype=block_inp.dtype,
+                            )
+                            if block_inp.ndim == 3
+                            else torch.zeros(
+                                (block_inp.shape[0], padlen),
+                                device=block_inp.device,
+                                dtype=block_inp.dtype,
+                            )
+                        )
+                        block_inp = torch.cat((block_inp, pad_tensor), dim=1)
+
                     block_inp_lens = (block_inp.shape[1]) * torch.ones_like(
                         full_batch["speech_lengths"]
                     )
@@ -583,6 +616,14 @@ class BlockTrainer(Trainer):
                     batch["speech_lengths"] = block_inp_lens
                     batch["block_id"] = block_id
                     batch["final_block"] = final_block
+                    if "binary_relevance" in full_batch:
+                        
+                        if block_id < full_batch["binary_relevance"].shape[1]:
+                            batch["binary_relevance"] = full_batch["binary_relevance"][
+                                :, block_id
+                            ]
+                        elif block_id == full_batch["binary_relevance"].shape[1]:
+                            logging.info(f"Err {block_id} {final_block} {full_batch['binary_relevance'].shape}")
 
                     batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
                     if no_forward_run:

@@ -1559,7 +1559,8 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
         log "Decoding started... log: '${_logdir}/asr_inference.*.log'"
         rm -f "${_logdir}/*.log"
         # shellcheck disable=SC2046,SC2086
-        ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_logdir}"/asr_inference.JOB.log \
+        #${_cmd} --gpu
+        run.pl JOB=1:"${_nj}" "${_logdir}"/asr_inference.JOB.log \
             ${python} -m espnet2.bin.${asr_task}_inference${inference_bin_tag} \
                 --batch_size ${batch_size} \
                 --ngpu "${_ngpu}" \
@@ -1590,7 +1591,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
         # shellcheck disable=SC2068
         for ref_txt in ${ref_text_files[@]}; do
             suffix=$(echo ${ref_txt} | sed 's/text//')
-            for f in token token_int score text; do
+            for f in token token_int score text block1_text block2_text block3_text block4_text block5_text block6_text block7_text block8_text block9_text block10_text; do
                 if [ -f "${_logdir}/output.1/1best_recog/${f}${suffix}" ]; then
                     for i in $(seq "${_nj}"); do
                         cat "${_logdir}/output.${i}/1best_recog/${f}${suffix}"

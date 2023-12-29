@@ -21,8 +21,12 @@ asr_expdir=$1
 
 for decode_dir in $(ls -d ${asr_expdir}/*/ | grep ${inference_tag}); do
 	for test_dir in $(ls -d ${decode_dir}/*/); do
-		dir=${test_dir}
-		echo "${decode_dir} ${asr_expdir} ${test_dir} ${dir}"
-    		python pyscripts/utils/score_summarization.py ${ref_file} $dir/text $(echo $dir | sed 's/exp//g') > $dir/result.sum
+		for hyp_file in $(ls ${test_dir}/ | grep text); do
+			hyp_file=${test_dir}/${hyp_file}
+			pref=${hyp_file##*/}
+			pref=$(echo ${pref} | sed 's=text==g')
+    			python pyscripts/utils/score_summarization.py ${ref_file} ${hyp_file} $(echo $dir | sed 's/exp//g') > ${test_dir}/${pref}result.sum
+	
+		done
 	done
 done

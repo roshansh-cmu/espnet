@@ -4,6 +4,7 @@ import logging
 import sys
 from distutils.version import LooseVersion
 from pathlib import Path
+import time
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -19,7 +20,7 @@ from espnet2.asr.transducer.beam_search_transducer import (
 )
 from espnet2.asr.transducer.beam_search_transducer import Hypothesis as TransHypothesis
 from espnet2.fileio.datadir_writer import DatadirWriter
-from espnet2.tasks.asr import ASRTask
+from espnet2.tasks.block_wise_asr import ASRTask
 from espnet2.tasks.enh_s2t import EnhS2TTask
 from espnet2.tasks.lm import LMTask
 from espnet2.text.build_tokenizer import build_tokenizer
@@ -290,7 +291,6 @@ class Speech2Text:
                 #         )
 
             else:
-                
                 beam_search = BeamSearch(
                     beam_size=beam_size,
                     weights=weights,
@@ -300,6 +300,9 @@ class Speech2Text:
                     vocab_size=len(token_list),
                     token_list=token_list,
                     pre_beam_score_key=None if ctc_weight == 1.0 else "full",
+                    return_hs=True
+                    if asr_model.enc_context_method == "concatrelevance"
+                    else False,
                 )
 
                 # TODO(karita): make all scorers batchfied
@@ -381,12 +384,16 @@ class Speech2Text:
         self.enh_s2t_task = enh_s2t_task
         self.multi_asr = multi_asr
         self.han = True if "han" in asr_model_file else False
+        self.block_relevance = (
+            1 if asr_model.enc_context_method == "concatrelevance" else None
+        )
 
     @torch.no_grad()
     def __call__(
-        self, 
+        self,
         speech: Union[torch.Tensor, np.ndarray],
         speech_lengths: Optional[torch.Tensor] = None,
+        binary_relevance: Optional[torch.Tensor] = None,
         block_id: Optional[int] = None,
         final_block: Optional[bool] = False,
     ) -> List[
@@ -415,14 +422,37 @@ class Speech2Text:
         speech = speech.to(getattr(torch, self.dtype))
         # lengths: (1,)
         # lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
-        batch = {"speech": speech, "speech_lengths": speech_lengths.long(),"block_id": block_id, "final_block": final_block}
-        logging.info(f"speech length: {str(speech.size(1))} Block {block_id} Final Block {final_block}")
+        batch = {
+            "speech": speech,
+            "speech_lengths": speech_lengths.long(),
+            "block_id": block_id,
+            "final_block": final_block,
+        }
+        if binary_relevance:
+            batch["binary_relevance"] = binary_relevance
+        logging.info(
+            f"speech length: {str(speech.size(1))} Block {block_id} Final Block {final_block}"
+        )
 
         # a. To device
         batch = to_device(batch, device=self.device)
 
         # b. Forward Encoder
-        enc, _ = self.asr_model.encode(**batch)
+        if "binary_relevance" in batch and batch["binary_relevance"] is not None:
+            enc, _, _ = self.asr_model.encode(**batch)
+        else:
+            enc, _ = self.asr_model.encode(**batch)
+
+        if self.block_relevance is not None and block_id > 0:
+            # logging.info(f"Block relevance: {self.asr_model.gating_factor}")
+            self.block_relevance = 1 if self.asr_model.gating_factor[0] > 0.5 else 0
+
+        if self.block_relevance is None:
+            if not (block_id == 0 or final_block):
+                return []
+        elif self.block_relevance == 0 and not final_block:
+            return []
+
         if self.multi_asr:
             enc = enc.unbind(dim=1)  # (batch, num_inf, ...) -> num_inf x [batch, ...]
         if self.enh_s2t_task or self.multi_asr:
@@ -453,12 +483,11 @@ class Speech2Text:
 
             # c. Passed the encoder result and the beam search
             results = self._decode_single_sample(enc[0])
-            assert check_return_type(results)
+            assert check_return_type(results), f"Error in the return type: {results}"
 
         return results
 
     def _decode_single_sample(self, enc: torch.Tensor):
-
         if self.beam_search_transducer:
             logging.info("encoder output length: " + str(enc.shape[0]))
             nbest_hyps = self.beam_search_transducer(enc)
@@ -512,6 +541,14 @@ class Speech2Text:
 
         nbest_hyps = nbest_hyps[: self.nbest]
 
+        if (
+            self.asr_model.enc_context_method == "concatrelevance"
+            and len(nbest_hyps) > 0
+        ):
+            if self.block_relevance == 1:
+                hs = torch.stack(nbest_hyps[0].hs, dim=0).unsqueeze(0)
+                self.asr_model.topic_vector = hs
+
         results = []
         for hyp in nbest_hyps:
             assert isinstance(hyp, (Hypothesis, TransHypothesis)), type(hyp)
@@ -535,6 +572,7 @@ class Speech2Text:
                 text = None
             if text == "":
                 continue
+
             results.append((text, token, token_int, hyp))
 
         return results
@@ -611,7 +649,8 @@ def inference(
     time_sync: bool,
     multi_asr: bool,
     block_size: int,
-    audio_clip:int= None,
+    audio_clip: int = None,
+    block_relevance: str = None,
 ):
     assert check_argument_types()
     if batch_size > 1:
@@ -683,6 +722,18 @@ def inference(
         inference=True,
     )
 
+    ## Get Block Level relance
+    if block_relevance is not None:
+        with open(block_relevance, "r") as f:
+            block_level = {
+                line.strip().split(" ")[0]: [
+                    int(x) for x in line.strip().split(" ")[1:]
+                ]
+                for line in f.readlines()
+            }
+    else:
+        block_level = None
+
     # 7 .Start for-loop
     # FIXME(kamo): The output format should be discussed about
     with DatadirWriter(output_dir) as writer:
@@ -698,32 +749,60 @@ def inference(
             full_batch = batch.copy()
 
             speech_len = batch["speech"].shape[0]
-            full_batch["speech"] = full_batch["speech"].unsqueeze(0) #to(device)
-            full_batch["speech_lengths"] = full_batch["speech"].new_full([1], dtype=torch.long, fill_value=full_batch["speech"].size(1))
-            # full_batch["speech_lengths"] = full_batch["speech"].shape[1] #to(device)
+            full_batch["speech"] = full_batch["speech"].unsqueeze(0)  # to(device)
+            full_batch["speech_lengths"] = full_batch["speech"].new_full(
+                [1], dtype=torch.long, fill_value=full_batch["speech"].size(1)
+            )
+            if block_relevance is not None:
+                full_batch["block_relevance"] = torch.from_numpy(
+                    np.array(block_level[keys[0]])
+                )
+            
+            st_time = time.time()
+
             block_id = 0
             sample_index = 0
-            speech2text.asr_model.block_length = 2
+            speech2text.asr_model.block_length = 10
             speech2text.asr_model.block_size = block_size
             speech2text.asr_model.reset_batch()
+            curr_relevance = [1]
             while sample_index < speech_len:
                 # logging.info(f"Speech length: {speech_len} {full_batch['speech'].shape} Block{block_id} Sample Index {sample_index}")
                 # Get a block of speech
-                if full_batch["speech"].shape[1] - (sample_index+block_size) < 100:
-                    block_inp = full_batch["speech"][:,sample_index:,:] if full_batch["speech"].ndim == 3 else full_batch["speech"][:,sample_index:]
+                if full_batch["speech"].shape[1] - (sample_index + block_size) < 100:
+                    block_inp = (
+                        full_batch["speech"][:, sample_index:, :]
+                        if full_batch["speech"].ndim == 3
+                        else full_batch["speech"][:, sample_index:]
+                    )
                 else:
                     if full_batch["speech"].ndim == 3:
-                        block_inp = full_batch["speech"][:,sample_index:sample_index+block_size,:] if sample_index +block_size < full_batch["speech"].shape[1] else full_batch["speech"][:,sample_index:,:]
+                        block_inp = (
+                            full_batch["speech"][
+                                :, sample_index : sample_index + block_size, :
+                            ]
+                            if sample_index + block_size < full_batch["speech"].shape[1]
+                            else full_batch["speech"][:, sample_index:, :]
+                        )
                     else:
-                        block_inp = full_batch["speech"][:,sample_index:sample_index+block_size] if sample_index +block_size < full_batch["speech"].shape[1] else full_batch["speech"][:,sample_index:]
-                block_inp_lens = (block_inp.shape[1])*torch.ones_like(full_batch["speech_lengths"]).long()
-                
-                for j,l in enumerate(block_inp_lens):
+                        block_inp = (
+                            full_batch["speech"][
+                                :, sample_index : sample_index + block_size
+                            ]
+                            if sample_index + block_size < full_batch["speech"].shape[1]
+                            else full_batch["speech"][:, sample_index:]
+                        )
+
+                block_inp_lens = (block_inp.shape[1]) * torch.ones_like(
+                    full_batch["speech_lengths"]
+                ).long()
+
+                for j, l in enumerate(block_inp_lens):
                     if full_batch["speech_lengths"][j] < sample_index + l:
-                        l = sample_index + l  - full_batch["speech_lengths"][j] 
-                
-                if full_batch["speech"].shape[1] - (sample_index+block_size) < 100:
-                    final_block = True 
+                        l = sample_index + l - full_batch["speech_lengths"][j]
+
+                if full_batch["speech"].shape[1] - (sample_index + block_size) < 100:
+                    final_block = True
                 else:
                     final_block = False
 
@@ -731,15 +810,35 @@ def inference(
                 batch["speech_lengths"] = block_inp_lens
                 batch["block_id"] = block_id
                 batch["final_block"] = final_block
+                batch["binary_relevance"] = (
+                    full_batch["block_relevance"][block_id]
+                    if "block_relevance" in full_batch
+                    and block_id < len(full_batch["block_relevance"])
+                    else None
+                )
 
-                #if block_id == 0:
-                #    speech2text.maxlenratio = speech2text.orig_maxlenratio
-                #    speech2text.minlenratio = speech2text.orig_minlenratio
-                #else:
-                if "cat" in output_dir and "att" not in output_dir and "han" not in output_dir and block_id > 0:
-                    speech2text.maxlenratio = (0.5**block_id)*speech2text.orig_maxlenratio
-                    speech2text.minlenratio = (0.5**block_id)*speech2text.orig_minlenratio
-                    logging.warning(f"Updated at Block {block_id} Maxlenratio {speech2text.maxlenratio} Minlenratio {speech2text.minlenratio}")
+                if (
+                    ("cat" in output_dir or "rbass" in output_dir)
+                    and "att" not in output_dir
+                    and "han" not in output_dir
+                    and block_id > 0
+                ):
+                    num_stored_blocks = max(
+                        speech2text.asr_model.enc_context[-1][0].shape[1] / (249),
+                        1,
+                    )
+                    if num_stored_blocks > 1:
+                        speech2text.maxlenratio = max(
+                            speech2text.orig_maxlenratio / num_stored_blocks, 0.1
+                        ) if max(
+                            speech2text.orig_maxlenratio / num_stored_blocks, 0.1
+                        ) < 0.3 else 0.3 
+                        speech2text.minlenratio = max(
+                            speech2text.orig_minlenratio / num_stored_blocks, 0.04
+                        )  # max(0.5**block_id*speech2text.orig_minlenratio,0.01)
+                        logging.warning(
+                            f"Updated at Block {block_id} | Maxlenratio {speech2text.maxlenratio:.3f} Minlenratio {speech2text.minlenratio:.3f} with NUM BLOCKS {num_stored_blocks}"
+                        )
                 else:
                     speech2text.maxlenratio = speech2text.orig_maxlenratio
                     speech2text.minlenratio = speech2text.orig_minlenratio
@@ -756,26 +855,36 @@ def inference(
 
                 # Only supporting batch_size==1
                 key = keys[0]
-            
+
                 # Normal ASR
-                for n, (text, token, token_int, hyp) in zip(
-                    range(1, nbest + 1), results
-                ):
-                    # Create a directory: outdir/{n}best_recog
-                    ibest_writer = writer[f"{n}best_recog"]
+                if speech2text.block_relevance is not None:
+                    curr_relevance.append(speech2text.block_relevance)
 
-                    # Write the result to each file
-                    
+                if results != []:  # and (block_id == 0 or final_block):
+                    for n, (text, token, token_int, hyp) in zip(
+                        range(1, nbest + 1), results
+                    ):
+                        # Create a directory: outdir/{n}best_recog
+                        ibest_writer = writer[f"{n}best_recog"]
 
-                    if text is not None:
-                        if final_block:
-                            ibest_writer["text"][key] = text
-                            ibest_writer["token"][key] = " ".join(token)
-                            ibest_writer["token_int"][key] = " ".join(map(str, token_int))
-                            ibest_writer["score"][key] = str(hyp.score)
-                    
-                    ibest_writer[f"block{block_id+1}_text"][key] = text
-                
+                        # Write the result to each file
+                        if text is not None:
+                            if final_block:
+                                ibest_writer["text"][key] = text
+                                ibest_writer["token"][key] = " ".join(token)
+                                ibest_writer["token_int"][key] = " ".join(
+                                    map(str, token_int)
+                                )
+                                ibest_writer["score"][key] = str(hyp.score)
+                                ibest_writer["block_relevance"][key] = " ".join(
+                                map(str, curr_relevance)
+                            )
+                                end_time = time.time()
+                                ibest_writer["decoding_time"][key] = str(end_time - st_time)
+
+                            if block_id == 0:
+                                ibest_writer[f"block{block_id+1}_text"][key] = text
+
                 block_id += 1
                 sample_index += block_inp_lens
 
@@ -991,6 +1100,12 @@ def get_parser():
         type=str2bool,
         default=False,
         help="Time synchronous beam search.",
+    )
+    group.add_argument(
+        "--block_relevance",
+        type=str,
+        default=None,
+        help="Block level relevance",
     )
 
     return parser
