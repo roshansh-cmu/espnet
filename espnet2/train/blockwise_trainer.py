@@ -180,24 +180,20 @@ class BlockTrainer(Trainer):
             batch["utt_id"] = utt_id
 
             if audio_clip is not None:
-                # logging.warning(f"Before Clip {batch['speech'].shape} {audio_clip}")
                 batch["speech"] = (
                     batch["speech"][:, :audio_clip, :]
                     if batch["speech"].ndim == 3
                     else batch["speech"][:, :audio_clip]
                 )
-                # logging.warning(f"After Clip {batch['speech'].shape} {audio_clip}")
 
             full_batch = batch.copy()
             block_idx = 0
 
-            # model.reset_batch()
 
-            # logging.warning(f"Reset the block {model.enc_context} {model.block_id} {full_batch['speech'].shape} {block_size}")
             if block_size is not None:
                 sample_index = 0
                 num_blocks = np.ceil(float(full_batch["speech"].shape[1]) / block_size)
-                # logging.info(f"num_blocks: {num_blocks} Size of the input: {full_batch['speech'].shape[1]} Block size: {block_size}")
+                # logging.info(f"num_blocks: {num_blocks} Size of the input: {full_batch['speech'].shape[1]} Block size: {block_size} {full_batch['speech'].shape}")
                 while sample_index < full_batch["speech"].shape[1]:
                     if (
                             full_batch["speech"].shape[1] - (sample_index + block_size)
@@ -265,6 +261,7 @@ class BlockTrainer(Trainer):
                     batch["speech_lengths"] = block_inp_lens
                     batch["block_id"] = block_idx
                     batch["final_block"] = final_block
+                    # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index} Speech {batch['speech'].shape}")
                     
                     if "binary_relevance" in full_batch:
                         batch["binary_relevance"] = full_batch["binary_relevance"][
@@ -324,10 +321,11 @@ class BlockTrainer(Trainer):
                             **autocast_args,
                         ):
                             with reporter.measure_time(f"forward_time"):
+                                # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index} speech {batch['speech'].shape} {full_batch['speech'].shape}")
+
                                 if block_idx == 0:
-                                    retval = model(**batch, find_unused_parameters=True)
+                                    retval = model(**batch, find_unused_parameters=False)
                                 else:
-                                    # logging.info(f"Block {block_idx} of {num_blocks} sample_index={sample_index}")
                                     retval = model(**batch, find_unused_parameters=False)
                                 # Note(kamo):
                                 # Supporting two patterns for the returned value from the model
@@ -502,6 +500,7 @@ class BlockTrainer(Trainer):
                     sample_index += block_inp.shape[1]
                     block_idx += 1
                     # logging.info(f"Updated block_idx: {block_idx} block_size={block_size}")
+            
 
         else:
             if distributed:

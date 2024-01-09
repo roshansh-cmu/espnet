@@ -66,7 +66,7 @@ class BlockHANTransformerDecoder(BaseTransformerDecoder):
                     dropout_rate,
                     normalize_before,
                     concat_after,
-                ) if lnum < num_blocks - 1 else ContextualDecoderLayer(
+                ) if lnum > 0 else ContextualDecoderLayer(
                     size=attention_dim,
                     self_attn=MultiHeadedAttention(
                         attention_heads, attention_dim, self_attention_dropout_rate

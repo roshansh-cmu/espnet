@@ -20,7 +20,7 @@ from espnet2.asr.transducer.beam_search_transducer import (
 )
 from espnet2.asr.transducer.beam_search_transducer import Hypothesis as TransHypothesis
 from espnet2.fileio.datadir_writer import DatadirWriter
-from espnet2.tasks.block_wise_asr import ASRTask
+from espnet2.tasks.asr_block import ASRTask
 from espnet2.tasks.enh_s2t import EnhS2TTask
 from espnet2.tasks.lm import LMTask
 from espnet2.text.build_tokenizer import build_tokenizer

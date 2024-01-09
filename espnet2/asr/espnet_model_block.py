@@ -216,6 +216,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         self.block_id = 0
         if self.encoder_prompt:
             self.encoder.reset_prompt()
+        self.topic_vector = None
 
     def encode(
         self,
@@ -269,6 +270,7 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         else:
             encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
         intermediate_outs = None
+
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
@@ -298,6 +300,12 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         encoder_out, encoder_out_lens, bce_loss = self.combine_encoder_context(
                 encoder_out, encoder_out_lens, binary_relevance=binary_relevance
             )
+    
+        assert encoder_out.size(0) == speech.size(0), (
+            encoder_out.size(),
+            speech.size(0),
+        )
+
         if binary_relevance is not None:
             return encoder_out, encoder_out_lens, bce_loss
         else:
@@ -613,12 +621,15 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                     self.enc_context[-1][1],
                 )
                 topic_mask = None
+                # logging.info(f"Enc Out shape {enc_out.shape} TV: {self.topic_vector.shape} Prev Sem Emb {prev_sem_emb.shape if prev_sem_emb is not None else None} BR {binary_relevance.shape if binary_relevance is not None else None}")
                 current_topic_similarity = torch.nn.functional.relu(self.curr_block_attention(
                     enc_out, self.topic_vector, self.topic_vector, topic_mask
                 ))
+
                 pred_relevance = self.curr_gater(
                     torch.mean(current_topic_similarity, dim=1)
                 ).squeeze(-1)
+
                 if binary_relevance is not None:
                     bce_loss = self.aux_criterion(pred_relevance, binary_relevance.float())
                 else:
@@ -787,6 +798,8 @@ class ESPnetBlockASRModel(ESPnetASRModel):
 
         text[text == -1] = self.ignore_id
 
+        if block_id == 0:
+            self.topic_vector = None
 
         self.binary_relevance = binary_relevance
         # for data-parallel
@@ -811,39 +824,34 @@ class ESPnetBlockASRModel(ESPnetASRModel):
         loss_ctc, cer_ctc = None, None
         loss_transducer, cer_transducer, wer_transducer = None, None, None
         stats = dict()
+        loss = None 
 
-        # if self.only_bce_loss and self.block_id > 0:
-        #     if bce_loss is not None:
-        #         loss =  bce_loss
-        #     else:
-        #         logging.info(f"Block ID {self.block_id} BCE Loss {bce_loss} {binary_relevance}")
-        #         # loss = torch.zeros((1,),dtype=torch.float32,device=encoder_out.device)
+        if self.only_bce_loss and self.block_id > 0:
+            if bce_loss is not None:
+                loss =  bce_loss
+            else:
+                logging.info(f"Block ID {self.block_id} BCE Loss {bce_loss} {binary_relevance}")
             
-        #     stats["loss"] = loss.detach()
+            stats["loss"] = loss.detach()
 
-        #     if self.enc_context_method == "concatrelevance" and self.block_id > 0:
-        #         # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-        #         weights = self.gating_factor.detach()
-        #         # stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights)
-        #         # stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
-        #         #     weights
-        #         # )
-        #         if bce_loss is not None:
-        #             # stats[f"block_{self.block_id}_bce_loss"] = bce_loss.detach()
-        #             stats[f"bce_loss"] = bce_loss.detach()
-        #         pred_binary_relevance = torch.where(
-        #                 weights > 0.5, 1, 0
-        #         ).long()
-        #         if binary_relevance is not None:
-        #             stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
-        #             stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
-        #             pred_zero = torch.where(binary_relevance==0, 1, 0).long()
-        #             stats[f"relevance_acc0_len"] = len(binary_relevance[binary_relevance==0])
-        #             stats[f"relevance_acc0"] = (weights[pred_zero==1]==binary_relevance[binary_relevance==0]).sum()/len(binary_relevance[binary_relevance==0])
+            if self.enc_context_method == "concatrelevance" and self.block_id > 0:
+                weights = self.gating_factor.detach()
+              
+                if bce_loss is not None:
+                    stats[f"bce_loss"] = bce_loss.detach()
+                pred_binary_relevance = torch.where(
+                        weights > 0.5, 1, 0
+                ).long()
+                if binary_relevance is not None:
+                    stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
+                    stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
+                    pred_zero = torch.where(binary_relevance==0, 1, 0).long()
+                    # stats[f"relevance_acc0_len"] = len(binary_relevance[binary_relevance==1])
+                    stats[f"relevance_acc0"] = (weights[pred_zero==1]==binary_relevance[binary_relevance==0]).sum()/len(binary_relevance[binary_relevance==0])
             
-        #     # force_gatherable: to-device and to-tensor if scalar for DataParallel
-        #     loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
-        #     return loss, stats, weight
+            # force_gatherable: to-device and to-tensor if scalar for DataParallel
+            loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
+            return loss, stats, weight
 
         intermediate_outs = None
         if isinstance(encoder_out, tuple):
@@ -938,89 +946,86 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
                     encoder_out, encoder_out_lens, text, text_lengths
                 )
+            
+            
 
             # 3. CTC-Att loss definition
+            
+            
+            # if self.enc_context_method == "attentiongated" and self.block_id > 0:
+            #     stats[f"block_{self.block_id}_gate_wt"] = torch.mean(
+            #         self.gating_factor.detach()
+            #     )
+            # if self.enc_context_method == "attentiongatedv2" and self.block_id > 0:
+            #     # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+            #     weights = self.gating_factor.detach()
+            #     stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 1])
+            #     stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+            #     stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+            #         weights[:, 1]
+            #     )
+            #     stats[f"block_{self.block_id}_prev_gate_wt_std"] = torch.std(
+            #         weights[:, 0]
+            #     )
+
+            # if self.enc_context_method == "attentiongatedv4" and self.block_id > 0:
+            #     # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+            #     weights = self.gating_factor.detach()
+            #     stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
+            #     # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+            #     stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+            #         weights[:, 0]
+            #     )
+              
+
+            # if self.enc_context_method == "attentiongatedv5" and self.block_id > 0:
+            #     # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+            #     weights = self.gating_factor.detach()
+            #     stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
+            #     # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
+            #     stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
+            #         weights[:, 0]
+            #     )
+                
+        if not self.only_bce_loss or (self.only_bce_loss and self.block_id == 0):
             if self.ctc_weight == 0.0:
                 loss = loss_att
             elif self.ctc_weight == 1.0:
                 loss = loss_ctc
             else:
                 loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
-
-            if bce_loss is not None:
-                # logging.info(f"BCE Loss {bce_loss} Loss {loss}")
-                loss += (self.bce_weight * bce_loss)
-                
-                # logging.info(f"Loss {loss}")
             # Collect Attn branch stats
             stats["loss_att"] = loss_att.detach() if loss_att is not None else None
             stats["acc"] = acc_att
             if self.final_block:
                 stats["final_acc"] = acc_att
             stats[f"block_{self.block_id}_acc"] = acc_att
-            # stats[f"block_{self.block_id}_att_loss"] = loss_att.detach()
-            if self.enc_context_method == "attentiongated" and self.block_id > 0:
-                stats[f"block_{self.block_id}_gate_wt"] = torch.mean(
-                    self.gating_factor.detach()
-                )
-            if self.enc_context_method == "attentiongatedv2" and self.block_id > 0:
-                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-                weights = self.gating_factor.detach()
-                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 1])
-                stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
-                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
-                    weights[:, 1]
-                )
-                stats[f"block_{self.block_id}_prev_gate_wt_std"] = torch.std(
-                    weights[:, 0]
-                )
 
-            if self.enc_context_method == "attentiongatedv4" and self.block_id > 0:
-                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-                weights = self.gating_factor.detach()
-                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
-                # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
-                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
-                    weights[:, 0]
-                )
-                # stats[f"block_{self.block_id}_prev_gate_wt_std"] = torch.std(
-                #     weights[:, 0]
-                # )
+        # 4. Final loss
+        if self.block_id > 0 and bce_loss is not None:
+            # logging.info(f"BCE Loss {bce_loss} Loss {loss}")
+            loss =  (loss + (self.bce_weight * bce_loss)) if loss is not None else (self.bce_weight * bce_loss)
+                
 
-            if self.enc_context_method == "attentiongatedv5" and self.block_id > 0:
-                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-                weights = self.gating_factor.detach()
-                stats[f"block_{self.block_id}_curr_gate_wt"] = torch.mean(weights[:, 0])
-                # stats[f"block_{self.block_id}_prev_gate_wt"] = torch.mean(weights[:, 0])
-                stats[f"block_{self.block_id}_curr_gate_wt_std"] = torch.std(
-                    weights[:, 0]
-                )
-            if self.enc_context_method == "concatrelevance" and self.block_id > 0:
-                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-                weights = self.gating_factor.detach()
-                if bce_loss is not None:
-                    stats[f"bce_loss"] = bce_loss.detach()
-                # stats[f"block_{self.block_id}_gt_binary_relevance_mean"] = torch.mean(
-                #     binary_relevance
-                # )
-                # stats[f"block_{self.block_id}_gt_binary_relevance_std"] = torch.std(
-                #     binary_relevance
-                # )
-                pred_binary_relevance = torch.where(
-                        weights > 0.5, 1, 0
-                    ).long()
-                if binary_relevance is not None:
-                    stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
-                    pred_zero = torch.where(binary_relevance==0, 1, 0).long()
-                    # stats[f"relevance_acc0"] = (weights[pred_zero==1]==binary_relevance[binary_relevance==0]).sum()/len(binary_relevance[binary_relevance==0])
-                    stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
-            if self.enc_context_method == "concatrelevancerand" and self.block_id > 0:
-                # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
-                weights = self.gating_factor.detach()
-                if bce_loss is not None:
-                    stats[f"bce_loss"] = bce_loss.detach()
-            stats["cer"] = cer_att
-            stats["wer"] = wer_att
+        if self.enc_context_method == "concatrelevance" and self.block_id > 0:
+            # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+            weights = self.gating_factor.detach()
+            if bce_loss is not None:
+                stats[f"bce_loss"] = bce_loss
+            pred_binary_relevance = torch.where(
+                    weights > 0.5, 1, 0
+                ).long()
+            if binary_relevance is not None:
+                stats[f"relevance_acc_block_{self.block_id}"] = (pred_binary_relevance==binary_relevance).sum()/len(binary_relevance)
+                pred_zero = torch.where(binary_relevance==0, 1, 0).long()
+                stats[f"relevance_acc"] = (pred_binary_relevance==binary_relevance).sum().float()/len(binary_relevance)
+        if self.enc_context_method == "concatrelevancerand" and self.block_id > 0:
+            # logging.info(f"Block ID {self.block_id} Gate wt {self.gating_factor}")
+            weights = self.gating_factor.detach()
+            if bce_loss is not None:
+                stats[f"bce_loss"] = bce_loss.detach()
+        stats["cer"] = cer_att
+        stats["wer"] = wer_att
 
         # Collect total loss stats
         stats["loss"] = loss.detach()
@@ -1093,10 +1098,13 @@ class ESPnetBlockASRModel(ESPnetASRModel):
                 context=self.enc_context[-2],
             )
         else:
+
             if return_hs:
-                decoder_out, _, self.topic_vector = self.decoder(
+                # logging.info(f"Encoder out shape {encoder_out.shape} YS in pad shape {ys_in_pad.shape} ")
+                decoder_out, self.topic_vector = self.decoder(
                     encoder_out, encoder_out_lens, ys_in_pad, ys_in_lens, return_hs=True
-                )
+                )[0]
+                # logging.info(f"Decoder Topic vector shape {self.topic_vector.shape} {decoder_out.shape}")
                 self.topic_vector = self.topic_vector.detach()
             else:
                 decoder_out, _ = self.decoder(

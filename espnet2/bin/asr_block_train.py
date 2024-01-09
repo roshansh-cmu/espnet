@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from espnet2.tasks.block_wise_asr import ASRTask
+from espnet2.tasks.asr_block import ASRTask
 
 
 def get_parser():
