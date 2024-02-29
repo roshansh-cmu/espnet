@@ -195,9 +195,10 @@ asr_transducer_train.py
                                    [--wandb_name WANDB_NAME]
                                    [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
                                    [--detect_anomaly DETECT_ANOMALY]
-                                   [--use_lora USE_LORA]
-                                   [--save_lora_only SAVE_LORA_ONLY]
-                                   [--lora_conf LORA_CONF]
+                                   [--use_adapter USE_ADAPTER]
+                                   [--adapter {lora,houlsby}]
+                                   [--save_strategy {all,adapter_only,required_grad_only}]
+                                   [--adapter_conf ADAPTER_CONF]
                                    [--pretrain_path PRETRAIN_PATH]
                                    [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                                    [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -371,11 +372,18 @@ asr_transducer_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -741,8 +749,10 @@ diar_train.py
                          [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                          [--wandb_name WANDB_NAME]
                          [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                         [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                         [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                         [--detect_anomaly DETECT_ANOMALY]
+                         [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                         [--save_strategy {all,adapter_only,required_grad_only}]
+                         [--adapter_conf ADAPTER_CONF]
                          [--pretrain_path PRETRAIN_PATH]
                          [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                          [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -906,11 +916,18 @@ diar_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -1327,8 +1344,10 @@ enh_train.py
                         [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                         [--wandb_name WANDB_NAME]
                         [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                        [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                        [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                        [--detect_anomaly DETECT_ANOMALY]
+                        [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                        [--save_strategy {all,adapter_only,required_grad_only}]
+                        [--adapter_conf ADAPTER_CONF]
                         [--pretrain_path PRETRAIN_PATH]
                         [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                         [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -1506,11 +1525,18 @@ enh_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -1986,9 +2012,9 @@ enh_tse_train.py
                             [--wandb_name WANDB_NAME]
                             [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
                             [--detect_anomaly DETECT_ANOMALY]
-                            [--use_lora USE_LORA]
-                            [--save_lora_only SAVE_LORA_ONLY]
-                            [--lora_conf LORA_CONF]
+                            [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                            [--save_strategy {all,adapter_only,required_grad_only}]
+                            [--adapter_conf ADAPTER_CONF]
                             [--pretrain_path PRETRAIN_PATH]
                             [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                             [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -2165,11 +2191,18 @@ enh_tse_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -2553,9 +2586,9 @@ gan_svs_train.py
                             [--wandb_name WANDB_NAME]
                             [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
                             [--detect_anomaly DETECT_ANOMALY]
-                            [--use_lora USE_LORA]
-                            [--save_lora_only SAVE_LORA_ONLY]
-                            [--lora_conf LORA_CONF]
+                            [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                            [--save_strategy {all,adapter_only,required_grad_only}]
+                            [--adapter_conf ADAPTER_CONF]
                             [--pretrain_path PRETRAIN_PATH]
                             [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                             [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -2744,11 +2777,18 @@ gan_svs_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -3122,9 +3162,9 @@ gan_tts_train.py
                             [--wandb_name WANDB_NAME]
                             [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
                             [--detect_anomaly DETECT_ANOMALY]
-                            [--use_lora USE_LORA]
-                            [--save_lora_only SAVE_LORA_ONLY]
-                            [--lora_conf LORA_CONF]
+                            [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                            [--save_strategy {all,adapter_only,required_grad_only}]
+                            [--adapter_conf ADAPTER_CONF]
                             [--pretrain_path PRETRAIN_PATH]
                             [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                             [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -3307,11 +3347,18 @@ gan_tts_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -3675,9 +3722,11 @@ hubert_train.py
                            [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                            [--wandb_name WANDB_NAME]
                            [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                           [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                           [--save_lora_only SAVE_LORA_ONLY]
-                           [--lora_conf LORA_CONF] [--pretrain_path PRETRAIN_PATH]
+                           [--detect_anomaly DETECT_ANOMALY]
+                           [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                           [--save_strategy {all,adapter_only,required_grad_only}]
+                           [--adapter_conf ADAPTER_CONF]
+                           [--pretrain_path PRETRAIN_PATH]
                            [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                            [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
                            [--freeze_param [FREEZE_PARAM [FREEZE_PARAM ...]]]
@@ -3861,11 +3910,18 @@ hubert_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -4363,8 +4419,10 @@ lm_train.py
                        [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                        [--wandb_name WANDB_NAME]
                        [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                       [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                       [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                       [--detect_anomaly DETECT_ANOMALY]
+                       [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                       [--save_strategy {all,adapter_only,required_grad_only}]
+                       [--adapter_conf ADAPTER_CONF]
                        [--pretrain_path PRETRAIN_PATH]
                        [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                        [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -4527,11 +4585,18 @@ lm_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -4963,8 +5028,10 @@ mt_train.py
                        [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                        [--wandb_name WANDB_NAME]
                        [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                       [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                       [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                       [--detect_anomaly DETECT_ANOMALY]
+                       [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                       [--save_strategy {all,adapter_only,required_grad_only}]
+                       [--adapter_conf ADAPTER_CONF]
                        [--pretrain_path PRETRAIN_PATH]
                        [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                        [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -5146,11 +5213,18 @@ mt_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -5652,8 +5726,10 @@ s2st_train.py
                          [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                          [--wandb_name WANDB_NAME]
                          [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                         [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                         [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                         [--detect_anomaly DETECT_ANOMALY]
+                         [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                         [--save_strategy {all,adapter_only,required_grad_only}]
+                         [--adapter_conf ADAPTER_CONF]
                          [--pretrain_path PRETRAIN_PATH]
                          [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                          [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -5854,11 +5930,18 @@ s2st_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -6286,8 +6369,10 @@ s2t_train.py
                         [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                         [--wandb_name WANDB_NAME]
                         [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                        [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                        [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                        [--detect_anomaly DETECT_ANOMALY]
+                        [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                        [--save_strategy {all,adapter_only,required_grad_only}]
+                        [--adapter_conf ADAPTER_CONF]
                         [--pretrain_path PRETRAIN_PATH]
                         [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                         [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -6468,11 +6553,18 @@ s2t_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -7198,8 +7290,10 @@ spk_train.py
                         [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                         [--wandb_name WANDB_NAME]
                         [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                        [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                        [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                        [--detect_anomaly DETECT_ANOMALY]
+                        [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                        [--save_strategy {all,adapter_only,required_grad_only}]
+                        [--adapter_conf ADAPTER_CONF]
                         [--pretrain_path PRETRAIN_PATH]
                         [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                         [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -7370,11 +7464,18 @@ spk_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -7760,8 +7861,10 @@ st_train.py
                        [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                        [--wandb_name WANDB_NAME]
                        [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                       [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                       [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                       [--detect_anomaly DETECT_ANOMALY]
+                       [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                       [--save_strategy {all,adapter_only,required_grad_only}]
+                       [--adapter_conf ADAPTER_CONF]
                        [--pretrain_path PRETRAIN_PATH]
                        [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                        [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -7955,11 +8058,18 @@ st_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
@@ -8476,8 +8586,10 @@ tts_train.py
                         [--wandb_id WANDB_ID] [--wandb_entity WANDB_ENTITY]
                         [--wandb_name WANDB_NAME]
                         [--wandb_model_log_interval WANDB_MODEL_LOG_INTERVAL]
-                        [--detect_anomaly DETECT_ANOMALY] [--use_lora USE_LORA]
-                        [--save_lora_only SAVE_LORA_ONLY] [--lora_conf LORA_CONF]
+                        [--detect_anomaly DETECT_ANOMALY]
+                        [--use_adapter USE_ADAPTER] [--adapter {lora,houlsby}]
+                        [--save_strategy {all,adapter_only,required_grad_only}]
+                        [--adapter_conf ADAPTER_CONF]
                         [--pretrain_path PRETRAIN_PATH]
                         [--init_param [INIT_PARAM [INIT_PARAM ...]]]
                         [--ignore_init_mismatch IGNORE_INIT_MISMATCH]
@@ -8652,11 +8764,18 @@ tts_train.py
                             Set the model log period (default: -1)
       --detect_anomaly DETECT_ANOMALY
                             Set torch.autograd.set_detect_anomaly (default: False)
-      --use_lora USE_LORA   Enable LoRA based finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper (default: False)
-      --save_lora_only SAVE_LORA_ONLY
-                            Only save LoRA parameters or save all model parameters (default: True)
-      --lora_conf LORA_CONF
-                            Configuration for LoRA based finetuning (default: {})
+      --use_adapter USE_ADAPTER
+                            Enable efficient finetuning, see (https://arxiv.org/abs/2106.09685) for large pre-trained foundation models, like Whisper and SSL models (default: False)
+      --adapter {lora,houlsby}
+                            Adapter Name (default: lora)
+      --save_strategy {all,adapter_only,required_grad_only}
+                            The strategy to save parameters. Default: 'all' 
+                            'all': save all parameters
+                            'adapter_only': save only adapter parameters, without other parameters like downstream model
+                            'required_grad_only': save only parameters with requires_grad=True
+                             (default: all)
+      --adapter_conf ADAPTER_CONF
+                            Configuration for efficient finetuning (default: {})
     
     Pretraining model related:
       --pretrain_path PRETRAIN_PATH
