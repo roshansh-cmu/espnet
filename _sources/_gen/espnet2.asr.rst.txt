@@ -37,17 +37,6 @@ espnet2.asr.espnet_model
     :show-inheritance:
 
 
-.. _espnet2.asr.espnet_model_block:
-
-espnet2.asr.espnet_model_block
-------------------------------
-
-.. automodule:: espnet2.asr.espnet_model_block
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.asr.maskctc_model:
 
 espnet2.asr.maskctc_model
@@ -87,17 +76,6 @@ espnet2.asr.__init__
 --------------------
 
 .. automodule:: espnet2.asr.__init__
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet2.asr.slueperb_model:
-
-espnet2.asr.slueperb_model
---------------------------
-
-.. automodule:: espnet2.asr.slueperb_model
     :members:
     :undoc-members:
     :show-inheritance:
@@ -274,17 +252,6 @@ espnet2.asr.decoder.transformer_decoder
 ---------------------------------------
 
 .. automodule:: espnet2.asr.decoder.transformer_decoder
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet2.asr.decoder.block_decoder:
-
-espnet2.asr.decoder.block_decoder
----------------------------------
-
-.. automodule:: espnet2.asr.decoder.block_decoder
     :members:
     :undoc-members:
     :show-inheritance:
@@ -917,17 +884,6 @@ espnet2.asr.encoder.__init__
     :show-inheritance:
 
 
-.. _espnet2.asr.encoder.block_encoder:
-
-espnet2.asr.encoder.block_encoder
----------------------------------
-
-.. automodule:: espnet2.asr.encoder.block_encoder
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.asr.encoder.contextual_block_transformer_encoder:
 
 espnet2.asr.encoder.contextual_block_transformer_encoder
@@ -956,28 +912,6 @@ espnet2.asr.encoder.contextual_block_conformer_encoder
 ------------------------------------------------------
 
 .. automodule:: espnet2.asr.encoder.contextual_block_conformer_encoder
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet2.asr.encoder.fnet_encoder:
-
-espnet2.asr.encoder.fnet_encoder
---------------------------------
-
-.. automodule:: espnet2.asr.encoder.fnet_encoder
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet2.asr.encoder.flash_encoder:
-
-espnet2.asr.encoder.flash_encoder
----------------------------------
-
-.. automodule:: espnet2.asr.encoder.flash_encoder
     :members:
     :undoc-members:
     :show-inheritance:

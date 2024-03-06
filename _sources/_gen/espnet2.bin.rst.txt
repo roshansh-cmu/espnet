@@ -125,17 +125,6 @@ espnet2.bin.tts_inference
     :show-inheritance:
 
 
-.. _espnet2.bin.asr_block_inference:
-
-espnet2.bin.asr_block_inference
--------------------------------
-
-.. automodule:: espnet2.bin.asr_block_inference
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.bin.s2st_inference:
 
 espnet2.bin.s2st_inference
@@ -593,17 +582,6 @@ espnet2.bin.asr_inference
 -------------------------
 
 .. automodule:: espnet2.bin.asr_inference
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet2.bin.asr_block_train:
-
-espnet2.bin.asr_block_train
----------------------------
-
-.. automodule:: espnet2.bin.asr_block_train
     :members:
     :undoc-members:
     :show-inheritance:

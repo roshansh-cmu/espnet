@@ -217,6 +217,52 @@
 <h1>espnet2.uasr package<a class="headerlink" href="#espnet2-uasr-package" title="Permalink to this headline">¶</a></h1>
 <section id="espnet2-uasr-espnet-model-1">
 <span id="espnet2-uasr-espnet-model"></span><h2>espnet2.uasr.espnet_model<a class="headerlink" href="#espnet2-uasr-espnet-model-1" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-espnet2.uasr.espnet_model"></span><dl class="class">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel">
+<em class="property">class </em><code class="sig-prename descclassname">espnet2.uasr.espnet_model.</code><code class="sig-name descname">ESPnetUASRModel</code><span class="sig-paren">(</span><em class="sig-param">frontend: Optional[espnet2.asr.frontend.abs_frontend.AbsFrontend], segmenter: Optional[espnet2.uasr.segmenter.abs_segmenter.AbsSegmenter], generator: espnet2.uasr.generator.abs_generator.AbsGenerator, discriminator: espnet2.uasr.discriminator.abs_discriminator.AbsDiscriminator, losses: Dict[str, espnet2.uasr.loss.abs_loss.AbsUASRLoss], kenlm_path: Optional[str], token_list: Optional[list], max_epoch: Optional[int], vocab_size: int, cfg: Optional[Dict] = None, pad: int = 1, sil_token: str = '&lt;SIL&gt;', sos_token: str = '&lt;s&gt;', eos_token: str = '&lt;/s&gt;', skip_softmax: espnet2.utils.types.str2bool = False, use_gumbel: espnet2.utils.types.str2bool = False, use_hard_gumbel: espnet2.utils.types.str2bool = True, min_temperature: float = 0.1, max_temperature: float = 2.0, decay_temperature: float = 0.99995, use_collected_training_feats: espnet2.utils.types.str2bool = False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="espnet2.train.html#espnet2.train.abs_espnet_model.AbsESPnetModel" title="espnet2.train.abs_espnet_model.AbsESPnetModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.abs_espnet_model.AbsESPnetModel</span></code></a></p>
+<p>Unsupervised ASR model.</p>
+<p>The source code is from FAIRSEQ:
+<a class="reference external" href="https://github.com/facebookresearch/fairseq/tree/main/examples/wav2vec/unsupervised">https://github.com/facebookresearch/fairseq/tree/main/examples/wav2vec/unsupervised</a></p>
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.collect_feats">
+<code class="sig-name descname">collect_feats</code><span class="sig-paren">(</span><em class="sig-param">speech: torch.Tensor</em>, <em class="sig-param">speech_lengths: torch.Tensor</em>, <em class="sig-param">text: Optional[torch.Tensor] = None</em>, <em class="sig-param">text_lengths: Optional[torch.Tensor] = None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span> &#x2192; Dict[str, torch.Tensor]<a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.collect_feats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.collect_feats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.encode">
+<code class="sig-name descname">encode</code><span class="sig-paren">(</span><em class="sig-param">speech: torch.Tensor</em>, <em class="sig-param">speech_lengths: torch.Tensor</em><span class="sig-paren">)</span> &#x2192; Tuple[torch.Tensor, torch.Tensor]<a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">speech: torch.Tensor</em>, <em class="sig-param">speech_lengths: torch.Tensor</em>, <em class="sig-param">text: Optional[torch.Tensor] = None</em>, <em class="sig-param">text_lengths: Optional[torch.Tensor] = None</em>, <em class="sig-param">pseudo_labels: Optional[torch.Tensor] = None</em>, <em class="sig-param">pseudo_labels_lengths: Optional[torch.Tensor] = None</em>, <em class="sig-param">do_validation: Optional[espnet2.utils.types.str2bool] = False</em>, <em class="sig-param">print_hyp: Optional[espnet2.utils.types.str2bool] = False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span> &#x2192; Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]<a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Frontend + Segmenter + Generator + Discriminator + Calc Loss</p>
+<p>Args:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.get_optim_index">
+<code class="sig-name descname">get_optim_index</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.get_optim_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.get_optim_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.inference">
+<code class="sig-name descname">inference</code><span class="sig-paren">(</span><em class="sig-param">speech: torch.Tensor</em>, <em class="sig-param">speech_lengths: torch.Tensor</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.inference"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.inference" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.is_discriminative_step">
+<code class="sig-name descname">is_discriminative_step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/uasr/espnet_model.html#ESPnetUASRModel.is_discriminative_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.is_discriminative_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="espnet2.uasr.espnet_model.ESPnetUASRModel.number_updates">
+<em class="property">property </em><code class="sig-name descname">number_updates</code><a class="headerlink" href="#espnet2.uasr.espnet_model.ESPnetUASRModel.number_updates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="espnet2-uasr-init-1">
 <span id="espnet2-uasr-init"></span><h2>espnet2.uasr.__init__<a class="headerlink" href="#espnet2-uasr-init-1" title="Permalink to this headline">¶</a></h2>

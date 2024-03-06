@@ -125,17 +125,6 @@ espnet.nets.e2e_asr_common
     :show-inheritance:
 
 
-.. _espnet.nets.beam_search_han:
-
-espnet.nets.beam_search_han
----------------------------
-
-.. automodule:: espnet.nets.beam_search_han
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet.nets.asr_interface:
 
 espnet.nets.asr_interface
@@ -950,17 +939,6 @@ espnet.nets.pytorch_backend.transformer.encoder_mix
     :show-inheritance:
 
 
-.. _espnet.nets.pytorch_backend.transformer.flash_attention:
-
-espnet.nets.pytorch_backend.transformer.flash_attention
--------------------------------------------------------
-
-.. automodule:: espnet.nets.pytorch_backend.transformer.flash_attention
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet.nets.pytorch_backend.transformer.decoder:
 
 espnet.nets.pytorch_backend.transformer.decoder
@@ -1016,17 +994,6 @@ espnet.nets.pytorch_backend.transformer.positionwise_feed_forward
     :show-inheritance:
 
 
-.. _espnet.nets.pytorch_backend.transformer.fnet_attention:
-
-espnet.nets.pytorch_backend.transformer.fnet_attention
-------------------------------------------------------
-
-.. automodule:: espnet.nets.pytorch_backend.transformer.fnet_attention
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet.nets.pytorch_backend.transformer.repeat:
 
 espnet.nets.pytorch_backend.transformer.repeat
@@ -1066,28 +1033,6 @@ espnet.nets.pytorch_backend.transformer.layer_norm
 --------------------------------------------------
 
 .. automodule:: espnet.nets.pytorch_backend.transformer.layer_norm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet.nets.pytorch_backend.transformer.context_decoder_layer:
-
-espnet.nets.pytorch_backend.transformer.context_decoder_layer
--------------------------------------------------------------
-
-.. automodule:: espnet.nets.pytorch_backend.transformer.context_decoder_layer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-.. _espnet.nets.pytorch_backend.transformer.hierarchical_mha:
-
-espnet.nets.pytorch_backend.transformer.hierarchical_mha
---------------------------------------------------------
-
-.. automodule:: espnet.nets.pytorch_backend.transformer.hierarchical_mha
     :members:
     :undoc-members:
     :show-inheritance:

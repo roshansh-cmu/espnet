@@ -70,17 +70,6 @@ espnet2.train.reporter
     :show-inheritance:
 
 
-.. _espnet2.train.blockwise_trainer:
-
-espnet2.train.blockwise_trainer
--------------------------------
-
-.. automodule:: espnet2.train.blockwise_trainer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.train.class_choices:
 
 espnet2.train.class_choices

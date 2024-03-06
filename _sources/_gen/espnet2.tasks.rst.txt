@@ -37,17 +37,6 @@ espnet2.tasks.slu
     :show-inheritance:
 
 
-.. _espnet2.tasks.block_wise_asr:
-
-espnet2.tasks.block_wise_asr
-----------------------------
-
-.. automodule:: espnet2.tasks.block_wise_asr
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.tasks.s2st:
 
 espnet2.tasks.s2st

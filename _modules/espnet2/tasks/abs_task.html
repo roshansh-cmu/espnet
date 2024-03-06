@@ -1567,7 +1567,6 @@
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># 6. Loads pre-trained model</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Init param is </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">init_param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">init_param</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading pretrained params from </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">load_pretrained_model</span><span class="p">(</span>
@@ -1648,7 +1647,7 @@
                         <span class="nb">id</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">wandb_id</span><span class="p">,</span>
                         <span class="n">resume</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">resume</span><span class="p">,</span>
                     <span class="p">)</span>
-                    <span class="n">wandb</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">,</span><span class="n">allow_val_change</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">wandb</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># wandb also supports grouping for distributed training,</span>
                     <span class="c1"># but we only logs aggregated data,</span>

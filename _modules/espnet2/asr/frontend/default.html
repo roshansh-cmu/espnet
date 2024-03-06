@@ -249,7 +249,6 @@
         <span class="n">htk</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">frontend_conf</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_default_kwargs</span><span class="p">(</span><span class="n">Frontend</span><span class="p">),</span>
         <span class="n">apply_stft</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">trunc_audio</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">assert</span> <span class="n">check_argument_types</span><span class="p">()</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
@@ -290,19 +289,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">n_mels</span> <span class="o">=</span> <span class="n">n_mels</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">frontend_type</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">trunc_audio</span> <span class="o">=</span> <span class="n">trunc_audio</span>
-
 <div class="viewcode-block" id="DefaultFrontend.output_size"><a class="viewcode-back" href="../../../../_gen/espnet2.asr.html#espnet2.asr.frontend.default.DefaultFrontend.output_size">[docs]</a>    <span class="k">def</span> <span class="nf">output_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_mels</span></div>
 
 <div class="viewcode-block" id="DefaultFrontend.forward"><a class="viewcode-back" href="../../../../_gen/espnet2.asr.html#espnet2.asr.frontend.default.DefaultFrontend.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">input_lengths</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
-        
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trunc_audio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="nb">input</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[:,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">trunc_audio</span><span class="p">]</span>
-            <span class="n">input_lengths</span> <span class="o">=</span> <span class="n">input_lengths</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trunc_audio</span><span class="p">)</span>
-            
         <span class="c1"># 1. Domain-conversion: e.g. Stft: time -&gt; time-freq</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stft</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">input_stft</span><span class="p">,</span> <span class="n">feats_lens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_stft</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">input_lengths</span><span class="p">)</span>

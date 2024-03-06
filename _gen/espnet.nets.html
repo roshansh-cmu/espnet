@@ -137,7 +137,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-batch-beam-search-online-1">espnet.nets.batch_beam_search_online</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-beam-search-transducer-1">espnet.nets.beam_search_transducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-e2e-asr-common-1">espnet.nets.e2e_asr_common</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet-nets-beam-search-han-1">espnet.nets.beam_search_han</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-asr-interface-1">espnet.nets.asr_interface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-e2e-mt-common-1">espnet.nets.e2e_mt_common</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-init-1">espnet.nets.__init__</a></li>
@@ -212,19 +211,15 @@
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-frontends-init-1">espnet.nets.pytorch_backend.frontends.__init__</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-frontends-dnn-beamformer-1">espnet.nets.pytorch_backend.frontends.dnn_beamformer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-encoder-mix-1">espnet.nets.pytorch_backend.transformer.encoder_mix</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-flash-attention-1">espnet.nets.pytorch_backend.transformer.flash_attention</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-decoder-1">espnet.nets.pytorch_backend.transformer.decoder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-initializer-1">espnet.nets.pytorch_backend.transformer.initializer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-encoder-1">espnet.nets.pytorch_backend.transformer.encoder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-subsampling-without-posenc-1">espnet.nets.pytorch_backend.transformer.subsampling_without_posenc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-positionwise-feed-forward-1">espnet.nets.pytorch_backend.transformer.positionwise_feed_forward</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-fnet-attention-1">espnet.nets.pytorch_backend.transformer.fnet_attention</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-repeat-1">espnet.nets.pytorch_backend.transformer.repeat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-decoder-layer-1">espnet.nets.pytorch_backend.transformer.decoder_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-lightconv2d-1">espnet.nets.pytorch_backend.transformer.lightconv2d</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-layer-norm-1">espnet.nets.pytorch_backend.transformer.layer_norm</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-context-decoder-layer-1">espnet.nets.pytorch_backend.transformer.context_decoder_layer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-hierarchical-mha-1">espnet.nets.pytorch_backend.transformer.hierarchical_mha</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-mask-1">espnet.nets.pytorch_backend.transformer.mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-label-smoothing-loss-1">espnet.nets.pytorch_backend.transformer.label_smoothing_loss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet-nets-pytorch-backend-transformer-attention-1">espnet.nets.pytorch_backend.transformer.attention</a></li>
@@ -1791,316 +1786,6 @@ until further modifications.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="espnet-nets-beam-search-han-1">
-<span id="espnet-nets-beam-search-han"></span><h2>espnet.nets.beam_search_han<a class="headerlink" href="#espnet-nets-beam-search-han-1" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-espnet.nets.beam_search_han"></span><p>Beam search module.</p>
-<dl class="class">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN">
-<em class="property">class </em><code class="sig-prename descclassname">espnet.nets.beam_search_han.</code><code class="sig-name descname">BeamSearchHAN</code><span class="sig-paren">(</span><em class="sig-param">scorers: Dict[str, espnet.nets.scorer_interface.ScorerInterface], weights: Dict[str, float], beam_size: int, vocab_size: int, sos: int, eos: int, token_list: List[str] = None, pre_beam_ratio: float = 1.5, pre_beam_score_key: str = None, hyp_primer: List[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#espnet.nets.beam_search.BeamSearch" title="espnet.nets.beam_search.BeamSearch"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet.nets.beam_search.BeamSearch</span></code></a></p>
-<p>Beam search implementation.</p>
-<p>Initialize beam search.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scorers</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><a class="reference internal" href="#espnet.nets.scorer_interface.ScorerInterface" title="espnet.nets.scorer_interface.ScorerInterface"><em>ScorerInterface</em></a><em>]</em>) – Dict of decoder modules
-e.g., Decoder, CTCPrefixScorer, LM
-The scorer will be ignored if it is <cite>None</cite></p></li>
-<li><p><strong>weights</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em>) – Dict of weights for each scorers
-The scorer will be ignored if its weight is 0</p></li>
-<li><p><strong>beam_size</strong> (<em>int</em>) – The number of hypotheses kept during search</p></li>
-<li><p><strong>vocab_size</strong> (<em>int</em>) – The number of vocabulary</p></li>
-<li><p><strong>sos</strong> (<em>int</em>) – Start of sequence id</p></li>
-<li><p><strong>eos</strong> (<em>int</em>) – End of sequence id</p></li>
-<li><p><strong>token_list</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>) – List of tokens for debug log</p></li>
-<li><p><strong>pre_beam_score_key</strong> (<em>str</em>) – key of scores to perform pre-beam search</p></li>
-<li><p><strong>pre_beam_ratio</strong> (<em>float</em>) – beam size in the pre-beam search
-will be <cite>int(pre_beam_ratio * beam_size)</cite></p></li>
-</ul>
-</dd>
-</dl>
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.append_token">
-<em class="property">static </em><code class="sig-name descname">append_token</code><span class="sig-paren">(</span><em class="sig-param">xs: torch.Tensor</em>, <em class="sig-param">x: int</em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.append_token"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.append_token" title="Permalink to this definition">¶</a></dt>
-<dd><p>Append new token to prefix tokens.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>xs</strong> (<em>torch.Tensor</em>) – The prefix token</p></li>
-<li><p><strong>x</strong> (<em>int</em>) – The new token to append</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>New tensor contains: xs + [x] with xs.dtype and xs.device</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.beam">
-<code class="sig-name descname">beam</code><span class="sig-paren">(</span><em class="sig-param">weighted_scores: torch.Tensor</em>, <em class="sig-param">ids: torch.Tensor</em><span class="sig-paren">)</span> &#x2192; Tuple[torch.Tensor, torch.Tensor]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.beam" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute topk full token ids and partial token ids.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>weighted_scores</strong> (<em>torch.Tensor</em>) – The weighted sum scores for each tokens.</p></li>
-<li><p><strong>shape is `</strong> (<em>Its</em>) – </p></li>
-<li><p><strong>ids</strong> (<em>torch.Tensor</em>) – The partial token ids to compute topk</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The topk full token ids and partial token ids.
-Their shapes are <cite>(self.beam_size,)</cite></p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Tuple[torch.Tensor, torch.Tensor]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">x: torch.Tensor</em>, <em class="sig-param">maxlenratio: float = 0.0</em>, <em class="sig-param">minlenratio: float = 0.0</em>, <em class="sig-param">context: torch.Tensor = None</em><span class="sig-paren">)</span> &#x2192; List[espnet.nets.beam_search.Hypothesis]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform beam search.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Encoded speech feature (T, D)</p></li>
-<li><p><strong>maxlenratio</strong> (<em>float</em>) – Input length ratio to obtain max output length.
-If maxlenratio=0.0 (default), it uses a end-detect function
-to automatically find maximum hypothesis lengths
-If maxlenratio&lt;0.0, its absolute value is interpreted
-as a constant max output length.</p></li>
-<li><p><strong>minlenratio</strong> (<em>float</em>) – Input length ratio to obtain min output length.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>N-best decoding results</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>list[<a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis">Hypothesis</a>]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.init_hyp">
-<code class="sig-name descname">init_hyp</code><span class="sig-paren">(</span><em class="sig-param">x: torch.Tensor</em><span class="sig-paren">)</span> &#x2192; List[espnet.nets.beam_search.Hypothesis]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.init_hyp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.init_hyp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get an initial hypothesis data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – The encoder output feature</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The initial hypothesis.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis">Hypothesis</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.merge_scores">
-<em class="property">static </em><code class="sig-name descname">merge_scores</code><span class="sig-paren">(</span><em class="sig-param">prev_scores: Dict[str, float], next_full_scores: Dict[str, torch.Tensor], full_idx: int, next_part_scores: Dict[str, torch.Tensor], part_idx: int</em><span class="sig-paren">)</span> &#x2192; Dict[str, torch.Tensor]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.merge_scores"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.merge_scores" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge scores for new hypothesis.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>prev_scores</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em>) – The previous hypothesis scores by <cite>self.scorers</cite></p></li>
-<li><p><strong>next_full_scores</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>torch.Tensor</em><em>]</em>) – scores by <cite>self.full_scorers</cite></p></li>
-<li><p><strong>full_idx</strong> (<em>int</em>) – The next token id for <cite>next_full_scores</cite></p></li>
-<li><p><strong>next_part_scores</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>torch.Tensor</em><em>]</em>) – scores of partial tokens by <cite>self.part_scorers</cite></p></li>
-<li><p><strong>part_idx</strong> (<em>int</em>) – The new token id for <cite>next_part_scores</cite></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>The new score dict.</dt><dd><p>Its keys are names of <cite>self.full_scorers</cite> and <cite>self.part_scorers</cite>.
-Its values are scalar tensors by the scorers.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dict[str, torch.Tensor]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.merge_states">
-<code class="sig-name descname">merge_states</code><span class="sig-paren">(</span><em class="sig-param">states: Any</em>, <em class="sig-param">part_states: Any</em>, <em class="sig-param">part_idx: int</em><span class="sig-paren">)</span> &#x2192; Any<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.merge_states"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.merge_states" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge states for new hypothesis.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>states</strong> – states of <cite>self.full_scorers</cite></p></li>
-<li><p><strong>part_states</strong> – states of <cite>self.part_scorers</cite></p></li>
-<li><p><strong>part_idx</strong> (<em>int</em>) – The new token id for <cite>part_scores</cite></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>The new score dict.</dt><dd><p>Its keys are names of <cite>self.full_scorers</cite> and <cite>self.part_scorers</cite>.
-Its values are states of the scorers.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dict[str, torch.Tensor]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.post_process">
-<code class="sig-name descname">post_process</code><span class="sig-paren">(</span><em class="sig-param">i: int, maxlen: int, maxlenratio: float, running_hyps: List[espnet.nets.beam_search.Hypothesis], ended_hyps: List[espnet.nets.beam_search.Hypothesis]</em><span class="sig-paren">)</span> &#x2192; List[espnet.nets.beam_search.Hypothesis]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.post_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.post_process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform post-processing of beam search iterations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>i</strong> (<em>int</em>) – The length of hypothesis tokens.</p></li>
-<li><p><strong>maxlen</strong> (<em>int</em>) – The maximum length of tokens in beam search.</p></li>
-<li><p><strong>maxlenratio</strong> (<em>int</em>) – The maximum length ratio in beam search.</p></li>
-<li><p><strong>running_hyps</strong> (<em>List</em><em>[</em><a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis"><em>Hypothesis</em></a><em>]</em>) – The running hypotheses in beam search.</p></li>
-<li><p><strong>ended_hyps</strong> (<em>List</em><em>[</em><a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis"><em>Hypothesis</em></a><em>]</em>) – The ended hypotheses in beam search.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The new running hypotheses.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List[<a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis">Hypothesis</a>]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.score_full">
-<code class="sig-name descname">score_full</code><span class="sig-paren">(</span><em class="sig-param">hyp: espnet.nets.beam_search.Hypothesis</em>, <em class="sig-param">x: torch.Tensor</em>, <em class="sig-param">context: torch.Tensor = None</em><span class="sig-paren">)</span> &#x2192; Tuple[Dict[str, torch.Tensor], Dict[str, Any]]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.score_full"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.score_full" title="Permalink to this definition">¶</a></dt>
-<dd><p>Score new hypothesis by <cite>self.full_scorers</cite>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hyp</strong> (<a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis"><em>Hypothesis</em></a>) – Hypothesis with prefix tokens to score</p></li>
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Corresponding input feature</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>Tuple of</dt><dd><p>score dict of <cite>hyp</cite> that has string keys of <cite>self.full_scorers</cite>
-and tensor score values of shape: <cite>(self.n_vocab,)</cite>,
-and state dict that has string keys
-and state values of <cite>self.full_scorers</cite></p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Tuple[Dict[str, torch.Tensor], Dict[str, Any]]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.score_partial">
-<code class="sig-name descname">score_partial</code><span class="sig-paren">(</span><em class="sig-param">hyp: espnet.nets.beam_search.Hypothesis</em>, <em class="sig-param">ids: torch.Tensor</em>, <em class="sig-param">x: torch.Tensor</em>, <em class="sig-param">context: torch.Tensor = None</em><span class="sig-paren">)</span> &#x2192; Tuple[Dict[str, torch.Tensor], Dict[str, Any]]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.score_partial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.score_partial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Score new hypothesis by <cite>self.part_scorers</cite>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hyp</strong> (<a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis"><em>Hypothesis</em></a>) – Hypothesis with prefix tokens to score</p></li>
-<li><p><strong>ids</strong> (<em>torch.Tensor</em>) – 1D tensor of new partial tokens to score</p></li>
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Corresponding input feature</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>Tuple of</dt><dd><p>score dict of <cite>hyp</cite> that has string keys of <cite>self.part_scorers</cite>
-and tensor score values of shape: <cite>(len(ids),)</cite>,
-and state dict that has string keys
-and state values of <cite>self.part_scorers</cite></p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Tuple[Dict[str, torch.Tensor], Dict[str, Any]]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.search">
-<code class="sig-name descname">search</code><span class="sig-paren">(</span><em class="sig-param">running_hyps: List[espnet.nets.beam_search.Hypothesis], x: torch.Tensor, context: torch.Tensor = None</em><span class="sig-paren">)</span> &#x2192; List[espnet.nets.beam_search.Hypothesis]<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Search new tokens for running hypotheses and encoded speech x.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>running_hyps</strong> (<em>List</em><em>[</em><a class="reference internal" href="#espnet.nets.transducer_decoder_interface.Hypothesis" title="espnet.nets.transducer_decoder_interface.Hypothesis"><em>Hypothesis</em></a><em>]</em>) – Running hypotheses on beam</p></li>
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Encoded speech feature (T, D)</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Best sorted hypotheses</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List[Hypotheses]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet.nets.beam_search_han.BeamSearchHAN.set_hyp_primer">
-<code class="sig-name descname">set_hyp_primer</code><span class="sig-paren">(</span><em class="sig-param">hyp_primer: List[int] = None</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#BeamSearchHAN.set_hyp_primer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.BeamSearchHAN.set_hyp_primer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the primer sequence for decoding.</p>
-<p>Used for OpenAI Whisper models.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="espnet.nets.beam_search_han.beam_search">
-<code class="sig-prename descclassname">espnet.nets.beam_search_han.</code><code class="sig-name descname">beam_search</code><span class="sig-paren">(</span><em class="sig-param">x: torch.Tensor, sos: int, eos: int, beam_size: int, vocab_size: int, scorers: Dict[str, espnet.nets.scorer_interface.ScorerInterface], weights: Dict[str, float], token_list: List[str] = None, maxlenratio: float = 0.0, minlenratio: float = 0.0, pre_beam_ratio: float = 1.5, pre_beam_score_key: str = 'full'</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/espnet/nets/beam_search_han.html#beam_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.beam_search_han.beam_search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform beam search with scorers.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>torch.Tensor</em>) – Encoded speech feature (T, D)</p></li>
-<li><p><strong>sos</strong> (<em>int</em>) – Start of sequence id</p></li>
-<li><p><strong>eos</strong> (<em>int</em>) – End of sequence id</p></li>
-<li><p><strong>beam_size</strong> (<em>int</em>) – The number of hypotheses kept during search</p></li>
-<li><p><strong>vocab_size</strong> (<em>int</em>) – The number of vocabulary</p></li>
-<li><p><strong>scorers</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><a class="reference internal" href="#espnet.nets.scorer_interface.ScorerInterface" title="espnet.nets.scorer_interface.ScorerInterface"><em>ScorerInterface</em></a><em>]</em>) – Dict of decoder modules
-e.g., Decoder, CTCPrefixScorer, LM
-The scorer will be ignored if it is <cite>None</cite></p></li>
-<li><p><strong>weights</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em>) – Dict of weights for each scorers
-The scorer will be ignored if its weight is 0</p></li>
-<li><p><strong>token_list</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>) – List of tokens for debug log</p></li>
-<li><p><strong>maxlenratio</strong> (<em>float</em>) – Input length ratio to obtain max output length.
-If maxlenratio=0.0 (default), it uses a end-detect function
-to automatically find maximum hypothesis lengths</p></li>
-<li><p><strong>minlenratio</strong> (<em>float</em>) – Input length ratio to obtain min output length.</p></li>
-<li><p><strong>pre_beam_score_key</strong> (<em>str</em>) – key of scores to perform pre-beam search</p></li>
-<li><p><strong>pre_beam_ratio</strong> (<em>float</em>) – beam size in the pre-beam search
-will be <cite>int(pre_beam_ratio * beam_size)</cite></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>N-best decoding results</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>list</p>
 </dd>
 </dl>
 </dd></dl>
@@ -12578,9 +12263,6 @@ if False, no additional linear will be applied. i.e. x -&gt; x + att(x)</p></li>
 </dd></dl>
 
 </section>
-<section id="espnet-nets-pytorch-backend-transformer-flash-attention-1">
-<span id="espnet-nets-pytorch-backend-transformer-flash-attention"></span><h2>espnet.nets.pytorch_backend.transformer.flash_attention<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-flash-attention-1" title="Permalink to this headline">¶</a></h2>
-</section>
 <section id="espnet-nets-pytorch-backend-transformer-decoder-1">
 <span id="espnet-nets-pytorch-backend-transformer-decoder"></span><h2>espnet.nets.pytorch_backend.transformer.decoder<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-decoder-1" title="Permalink to this headline">¶</a></h2>
 <span class="target" id="module-espnet.nets.pytorch_backend.transformer.decoder"></span><p>Decoder definition.</p>
@@ -12911,29 +12593,6 @@ List[torch.Tensor]: List of new cache tensors.</p>
 </dd></dl>
 
 </section>
-<section id="espnet-nets-pytorch-backend-transformer-fnet-attention-1">
-<span id="espnet-nets-pytorch-backend-transformer-fnet-attention"></span><h2>espnet.nets.pytorch_backend.transformer.fnet_attention<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-fnet-attention-1" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-espnet.nets.pytorch_backend.transformer.fnet_attention"></span><dl class="class">
-<dt id="espnet.nets.pytorch_backend.transformer.fnet_attention.FNetSelfAttention">
-<em class="property">class </em><code class="sig-prename descclassname">espnet.nets.pytorch_backend.transformer.fnet_attention.</code><code class="sig-name descname">FNetSelfAttention</code><span class="sig-paren">(</span><em class="sig-param">size</em>, <em class="sig-param">dropout_rate=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/fnet_attention.html#FNetSelfAttention"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.fnet_attention.FNetSelfAttention" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
-<dl class="method">
-<dt id="espnet.nets.pytorch_backend.transformer.fnet_attention.FNetSelfAttention.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">query</em>, <em class="sig-param">key</em>, <em class="sig-param">value</em>, <em class="sig-param">pos_emb=None</em>, <em class="sig-param">mask=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/fnet_attention.html#FNetSelfAttention.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.fnet_attention.FNetSelfAttention.forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Defines the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</aside>
-</dd></dl>
-
-</dd></dl>
-
-</section>
 <section id="espnet-nets-pytorch-backend-transformer-repeat-1">
 <span id="espnet-nets-pytorch-backend-transformer-repeat"></span><h2>espnet.nets.pytorch_backend.transformer.repeat<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-repeat-1" title="Permalink to this headline">¶</a></h2>
 <span class="target" id="module-espnet.nets.pytorch_backend.transformer.repeat"></span><p>Repeat the same layer definition.</p>
@@ -13125,96 +12784,6 @@ This is just for compatibility with self-attention layer (attention.py)</p>
 </dl>
 </dd></dl>
 
-</dd></dl>
-
-</section>
-<section id="espnet-nets-pytorch-backend-transformer-context-decoder-layer-1">
-<span id="espnet-nets-pytorch-backend-transformer-context-decoder-layer"></span><h2>espnet.nets.pytorch_backend.transformer.context_decoder_layer<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-context-decoder-layer-1" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-espnet.nets.pytorch_backend.transformer.context_decoder_layer"></span><p>Decoder self-attention layer definition.</p>
-<dl class="class">
-<dt id="espnet.nets.pytorch_backend.transformer.context_decoder_layer.ContextualDecoderLayer">
-<em class="property">class </em><code class="sig-prename descclassname">espnet.nets.pytorch_backend.transformer.context_decoder_layer.</code><code class="sig-name descname">ContextualDecoderLayer</code><span class="sig-paren">(</span><em class="sig-param">size</em>, <em class="sig-param">self_attn</em>, <em class="sig-param">src_attn</em>, <em class="sig-param">feed_forward</em>, <em class="sig-param">dropout_rate</em>, <em class="sig-param">normalize_before=True</em>, <em class="sig-param">concat_after=False</em>, <em class="sig-param">context_attn=None</em>, <em class="sig-param">use_context_hier_attn=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/context_decoder_layer.html#ContextualDecoderLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.context_decoder_layer.ContextualDecoderLayer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#espnet.nets.pytorch_backend.transformer.decoder_layer.DecoderLayer" title="espnet.nets.pytorch_backend.transformer.decoder_layer.DecoderLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet.nets.pytorch_backend.transformer.decoder_layer.DecoderLayer</span></code></a></p>
-<p>Single decoder layer module.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>size</strong> (<em>int</em>) – Input dimension.</p></li>
-<li><p><strong>self_attn</strong> (<em>torch.nn.Module</em>) – Self-attention module instance.
-<cite>MultiHeadedAttention</cite> instance can be used as the argument.</p></li>
-<li><p><strong>src_attn</strong> (<em>torch.nn.Module</em>) – Self-attention module instance.
-<cite>MultiHeadedAttention</cite> instance can be used as the argument.</p></li>
-<li><p><strong>feed_forward</strong> (<em>torch.nn.Module</em>) – Feed-forward module instance.
-<cite>PositionwiseFeedForward</cite>, <cite>MultiLayeredConv1d</cite>, or <cite>Conv1dLinear</cite> instance
-can be used as the argument.</p></li>
-<li><p><strong>dropout_rate</strong> (<em>float</em>) – Dropout rate.</p></li>
-<li><p><strong>normalize_before</strong> (<em>bool</em>) – Whether to use layer_norm before the first block.</p></li>
-<li><p><strong>concat_after</strong> (<em>bool</em>) – Whether to concat attention layer’s input and output.
-if True, additional linear will be applied.
-i.e. x -&gt; x + linear(concat(x, att(x)))
-if False, no additional linear will be applied. i.e. x -&gt; x + att(x)</p></li>
-</ul>
-</dd>
-</dl>
-<p>Construct an DecoderLayer object.</p>
-<dl class="method">
-<dt id="espnet.nets.pytorch_backend.transformer.context_decoder_layer.ContextualDecoderLayer.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">tgt</em>, <em class="sig-param">tgt_mask</em>, <em class="sig-param">memory</em>, <em class="sig-param">memory_mask</em>, <em class="sig-param">cache=None</em>, <em class="sig-param">context=None</em>, <em class="sig-param">context_mask=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/context_decoder_layer.html#ContextualDecoderLayer.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.context_decoder_layer.ContextualDecoderLayer.forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute decoded features.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>tgt</strong> (<em>torch.Tensor</em>) – Input tensor (#batch, maxlen_out, size).</p></li>
-<li><p><strong>tgt_mask</strong> (<em>torch.Tensor</em>) – Mask for input tensor (#batch, maxlen_out).</p></li>
-<li><p><strong>memory</strong> (<em>torch.Tensor</em>) – Encoded memory, float32 (#batch, maxlen_in, size).</p></li>
-<li><p><strong>memory_mask</strong> (<em>torch.Tensor</em>) – Encoded memory mask (#batch, maxlen_in).</p></li>
-<li><p><strong>cache</strong> (<em>List</em><em>[</em><em>torch.Tensor</em><em>]</em>) – List of cached tensors.
-Each tensor shape should be (#batch, maxlen_out - 1, size).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Output tensor(#batch, maxlen_out, size).
-torch.Tensor: Mask for output tensor (#batch, maxlen_out).
-torch.Tensor: Encoded memory (#batch, maxlen_in, size).
-torch.Tensor: Encoded memory mask (#batch, maxlen_in).</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="espnet-nets-pytorch-backend-transformer-hierarchical-mha-1">
-<span id="espnet-nets-pytorch-backend-transformer-hierarchical-mha"></span><h2>espnet.nets.pytorch_backend.transformer.hierarchical_mha<a class="headerlink" href="#espnet-nets-pytorch-backend-transformer-hierarchical-mha-1" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-espnet.nets.pytorch_backend.transformer.hierarchical_mha"></span><p>This file implements hierarchical attention for combination of audio and visual features</p>
-<dl class="class">
-<dt id="espnet.nets.pytorch_backend.transformer.hierarchical_mha.HierarchicalAttention">
-<em class="property">class </em><code class="sig-prename descclassname">espnet.nets.pytorch_backend.transformer.hierarchical_mha.</code><code class="sig-name descname">HierarchicalAttention</code><span class="sig-paren">(</span><em class="sig-param">ctx_dims</em>, <em class="sig-param">hid_dim</em>, <em class="sig-param">mid_dim</em>, <em class="sig-param">att_activ='tanh'</em>, <em class="sig-param">att_feed_factor=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/hierarchical_mha.html#HierarchicalAttention"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.hierarchical_mha.HierarchicalAttention" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
-<p>Hierarchical attention over multiple modalities.</p>
-<dl class="method">
-<dt id="espnet.nets.pytorch_backend.transformer.hierarchical_mha.HierarchicalAttention.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">contexts</em>, <em class="sig-param">hid</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/hierarchical_mha.html#HierarchicalAttention.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.hierarchical_mha.HierarchicalAttention.forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Defines the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</aside>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="espnet.nets.pytorch_backend.transformer.hierarchical_mha.get_activation_fn">
-<code class="sig-prename descclassname">espnet.nets.pytorch_backend.transformer.hierarchical_mha.</code><code class="sig-name descname">get_activation_fn</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/hierarchical_mha.html#get_activation_fn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.hierarchical_mha.get_activation_fn" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a callable activation function from torch.</p>
 </dd></dl>
 
 </section>
@@ -14693,7 +14262,7 @@ This is just for compatibility with self-attention layer (attention.py)</p>
 </dl>
 <dl class="method">
 <dt id="espnet.nets.pytorch_backend.transformer.longformer_attention.LongformerAttention.forward">
-<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">query</em>, <em class="sig-param">key</em>, <em class="sig-param">value</em>, <em class="sig-param">mask</em>, <em class="sig-param">pos_emb</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/longformer_attention.html#LongformerAttention.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.longformer_attention.LongformerAttention.forward" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">query</em>, <em class="sig-param">key</em>, <em class="sig-param">value</em>, <em class="sig-param">mask</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet/nets/pytorch_backend/transformer/longformer_attention.html#LongformerAttention.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet.nets.pytorch_backend.transformer.longformer_attention.LongformerAttention.forward" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute Longformer Self-Attention with masking.</p>
 <p>Expects <cite>len(hidden_states)</cite> to be multiple of <cite>attention_window</cite>.
 Padding to <cite>attention_window</cite> happens in <code class="xref py py-meth docutils literal notranslate"><span class="pre">encoder.forward()</span></code>

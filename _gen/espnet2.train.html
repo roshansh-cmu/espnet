@@ -146,7 +146,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-gan-trainer-1">espnet2.train.gan_trainer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-collate-fn-1">espnet2.train.collate_fn</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-reporter-1">espnet2.train.reporter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#espnet2-train-blockwise-trainer-1">espnet2.train.blockwise_trainer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-class-choices-1">espnet2.train.class_choices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-abs-gan-espnet-model-1">espnet2.train.abs_gan_espnet_model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#espnet2-train-iterable-dataset-1">espnet2.train.iterable_dataset</a></li>
@@ -794,63 +793,6 @@ that of the dataset as they are.</p>
 <dt id="espnet2.train.reporter.wandb_get_prefix">
 <code class="sig-prename descclassname">espnet2.train.reporter.</code><code class="sig-name descname">wandb_get_prefix</code><span class="sig-paren">(</span><em class="sig-param">key: str</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/train/reporter.html#wandb_get_prefix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.reporter.wandb_get_prefix" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
-
-</section>
-<section id="espnet2-train-blockwise-trainer-1">
-<span id="espnet2-train-blockwise-trainer"></span><h2>espnet2.train.blockwise_trainer<a class="headerlink" href="#espnet2-train-blockwise-trainer-1" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-espnet2.train.blockwise_trainer"></span><p>Trainer module.</p>
-<dl class="class">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainer">
-<em class="property">class </em><code class="sig-prename descclassname">espnet2.train.blockwise_trainer.</code><code class="sig-name descname">BlockTrainer</code><a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#espnet2.train.trainer.Trainer" title="espnet2.train.trainer.Trainer"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.trainer.Trainer</span></code></a></p>
-<p>Trainer having a optimizer.</p>
-<p>If you’d like to use multiple optimizers, then inherit this class
-and override the methods if necessary - at least “train_one_epoch()”</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">TwoOptimizerTrainer</span><span class="p">(</span><span class="n">Trainer</span><span class="p">):</span>
-<span class="gp">... </span>    <span class="nd">@classmethod</span>
-<span class="gp">... </span>    <span class="k">def</span> <span class="nf">add_arguments</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
-<span class="gp">... </span>        <span class="o">...</span>
-<span class="gp">...</span>
-<span class="gp">... </span>    <span class="nd">@classmethod</span>
-<span class="gp">... </span>    <span class="k">def</span> <span class="nf">train_one_epoch</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">optimizers</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
-<span class="gp">... </span>        <span class="n">loss1</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model1</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<span class="gp">... </span>        <span class="n">loss1</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-<span class="gp">... </span>        <span class="n">optimizers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-<span class="gp">...</span>
-<span class="gp">... </span>        <span class="n">loss2</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model2</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<span class="gp">... </span>        <span class="n">loss2</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-<span class="gp">... </span>        <span class="n">optimizers</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-</pre></div>
-</div>
-<dl class="method">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainer.add_arguments">
-<em class="property">classmethod </em><code class="sig-name descname">add_arguments</code><span class="sig-paren">(</span><em class="sig-param">parser: argparse.ArgumentParser</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainer.add_arguments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainer.add_arguments" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reserved for future development of another Trainer</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainer.build_options">
-<em class="property">classmethod </em><code class="sig-name descname">build_options</code><span class="sig-paren">(</span><em class="sig-param">args: argparse.Namespace</em><span class="sig-paren">)</span> &#x2192; espnet2.train.blockwise_trainer.BlockTrainerOptions<a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainer.build_options"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainer.build_options" title="Permalink to this definition">¶</a></dt>
-<dd><p>Build options consumed by train(), eval(), and plot_attention()</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainer.train_one_epoch">
-<em class="property">classmethod </em><code class="sig-name descname">train_one_epoch</code><span class="sig-paren">(</span><em class="sig-param">model: torch.nn.modules.module.Module, iterator: Iterable[Tuple[List[str], Dict[str, torch.Tensor]]], optimizers: Sequence[torch.optim.optimizer.Optimizer], schedulers: Sequence[Optional[espnet2.schedulers.abs_scheduler.AbsScheduler]], scaler: Optional[torch.cuda.amp.grad_scaler.GradScaler], reporter: espnet2.train.reporter.SubReporter, summary_writer, options: espnet2.train.blockwise_trainer.BlockTrainerOptions, distributed_option: espnet2.train.distributed_utils.DistributedOption</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainer.train_one_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainer.train_one_epoch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainer.validate_one_epoch">
-<em class="property">classmethod </em><code class="sig-name descname">validate_one_epoch</code><span class="sig-paren">(</span><em class="sig-param">model: torch.nn.modules.module.Module, iterator: Iterable[Dict[str, torch.Tensor]], reporter: espnet2.train.reporter.SubReporter, options: espnet2.train.blockwise_trainer.BlockTrainerOptions, distributed_option: espnet2.train.distributed_utils.DistributedOption</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainer.validate_one_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainer.validate_one_epoch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="espnet2.train.blockwise_trainer.BlockTrainerOptions">
-<em class="property">class </em><code class="sig-prename descclassname">espnet2.train.blockwise_trainer.</code><code class="sig-name descname">BlockTrainerOptions</code><span class="sig-paren">(</span><em class="sig-param">ngpu: int, resume: bool, use_amp: bool, train_dtype: str, grad_noise: bool, accum_grad: int, grad_clip: float, grad_clip_type: float, log_interval: Union[int, NoneType], no_forward_run: bool, use_matplotlib: bool, use_tensorboard: bool, use_wandb: bool, adapter: str, use_adapter: bool, save_strategy: str, output_dir: Union[pathlib.Path, str], max_epoch: int, seed: int, sharded_ddp: bool, patience: Union[int, NoneType], keep_nbest_models: Union[int, List[int]], nbest_averaging_interval: int, early_stopping_criterion: Sequence[str], best_model_criterion: Sequence[Sequence[str]], val_scheduler_criterion: Sequence[str], unused_parameters: bool, wandb_model_log_interval: int, create_graph_in_tensorboard: bool, block_size: int, audio_clip: int, backprop_every_block: bool</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/espnet2/train/blockwise_trainer.html#BlockTrainerOptions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#espnet2.train.blockwise_trainer.BlockTrainerOptions" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#espnet2.train.trainer.TrainerOptions" title="espnet2.train.trainer.TrainerOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">espnet2.train.trainer.TrainerOptions</span></code></a></p>
-</dd></dl>
 
 </section>
 <section id="espnet2-train-class-choices-1">
