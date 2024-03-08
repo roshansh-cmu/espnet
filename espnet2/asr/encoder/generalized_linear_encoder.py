@@ -367,5 +367,5 @@ class GeneralizedXnorConformerEncoder(AbsEncoder):
 
         olens = masks.squeeze(1).sum(1)
         if len(intermediate_outs) > 0:
-            return (xs_pad, intermediate_outs), olens, None
-        return xs_pad, olens, None
+            return (xs_pad, intermediate_outs), olens
+        return xs_pad, olens

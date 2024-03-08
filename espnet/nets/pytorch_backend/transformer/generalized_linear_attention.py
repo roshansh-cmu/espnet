@@ -95,6 +95,48 @@ import logging
 #         )
 #         return super().forward(positions)
 
+# class RotaryEmbedding(nn.Module):
+#     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
+#         super().__init__()
+#         self.dim = dim
+#         self.max_position_embeddings = max_position_embeddings
+#         self.base = base
+#         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2, dtype=torch.int64).float().to(device) / self.dim))
+#         self.register_buffer("inv_freq", inv_freq, persistent=False)
+
+#     @property
+#     def sin_cached(self):
+#         # logger.warning_once(
+#         #     "The sin_cached attribute will be removed in 4.40. Bear in mind that its contents changed in v4.38. Use "
+#         #     "the forward method of RoPE from now on instead."
+#         # )
+#         return self._sin_cached
+
+#     @property
+#     def cos_cached(self):
+#         # logger.warning_once(
+#         #     "The cos_cached attribute will be removed in 4.40. Bear in mind that its contents changed in v4.38. Use "
+#         #     "the forward method of RoPE from now on instead."
+#         # )
+#         return self._cos_cached
+
+#     def forward(self, x, position_ids, seq_len=None):
+#         # if seq_len is not None:
+#         #     logger.warning_once("The `seq_len` argument is deprecated and unused. It will be removed in v4.40.")
+
+#         # x: [bs, num_attention_heads, seq_len, head_size]
+#         inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
+#         position_ids_expanded = position_ids[:, None, :].float()
+#         freqs = (inv_freq_expanded @ position_ids_expanded).transpose(1, 2)
+#         emb = torch.cat((freqs, freqs), dim=-1)
+#         cos = emb.cos().to(dtype=x.dtype)
+#         sin = emb.sin().to(dtype=x.dtype)
+#         # backwards compatibility
+#         self._cos_cached = cos
+#         self._sin_cached = sin
+#         return cos, sin
+
+
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
         super().__init__()
@@ -103,54 +145,68 @@ class RotaryEmbedding(nn.Module):
         self.base = base
         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2, dtype=torch.int64).float().to(device) / self.dim))
         self.register_buffer("inv_freq", inv_freq, persistent=False)
+        self._set_cos_sin_cache(seq_len=max_position_embeddings)
+    def _set_cos_sin_cache(self, seq_len):
+        self.max_seq_len_cached = seq_len
+        # [seq_len]
+        t = torch.arange(seq_len).float()
+        # [seq_len, dim/2]
+        freqs = torch.einsum("i,j->ij", t, self.inv_freq)
+        # Different from paper, but it uses a different permutation in order to obtain the same calculation
+        # [seq_len, dim]
+        emb = torch.concat([freqs, freqs], axis=-1)
+        # [1, seqlen, 1, dim]
+        self.cos_cached = emb.cos()[None, :, None, :]
+        self.sin_cached = emb.sin()[None, :, None, :]
 
-    @property
-    def sin_cached(self):
-        # logger.warning_once(
-        #     "The sin_cached attribute will be removed in 4.40. Bear in mind that its contents changed in v4.38. Use "
-        #     "the forward method of RoPE from now on instead."
-        # )
-        return self._sin_cached
-
-    @property
-    def cos_cached(self):
-        # logger.warning_once(
-        #     "The cos_cached attribute will be removed in 4.40. Bear in mind that its contents changed in v4.38. Use "
-        #     "the forward method of RoPE from now on instead."
-        # )
-        return self._cos_cached
-
-    def forward(self, x, position_ids, seq_len=None):
-        # if seq_len is not None:
-        #     logger.warning_once("The `seq_len` argument is deprecated and unused. It will be removed in v4.40.")
-
+    def forward(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
-        inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
-        position_ids_expanded = position_ids[:, None, :].float()
-        freqs = (inv_freq_expanded @ position_ids_expanded).transpose(1, 2)
-        emb = torch.cat((freqs, freqs), dim=-1)
-        cos = emb.cos().to(dtype=x.dtype)
-        sin = emb.sin().to(dtype=x.dtype)
-        # backwards compatibility
-        self._cos_cached = cos
-        self._sin_cached = sin
+        cos = self.cos_cached[:, :seq_len, :, :]
+        sin = self.sin_cached[:, :seq_len, :, :]
         return cos, sin
+        # return (
+        #     cos.cast(x.dtype) if cos.dtype != x.dtype else cos,
+        #     sin.cast(x.dtype) if sin.dtype != x.dtype else sin,
+        # )
 
+        
+# class LinearScalingRotaryEmbedding(RotaryEmbedding):
+#     """RotaryEmbedding extended with linear scaling. Credits to the Reddit user /u/kaiokendev"""
+
+#     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0):
+#         self.scaling_factor = scaling_factor
+#         super().__init__(dim, max_position_embeddings*scaling_factor, base, device)
+
+#     def forward(self, x, position_ids, seq_len=None):
+#         # difference to the original RoPE: a scaling factor is aplied to the position ids
+#         position_ids = position_ids.float() / self.scaling_factor
+#         cos, sin = super().forward(x, position_ids, seq_len)
+#         return cos, sin
 
 class LinearScalingRotaryEmbedding(RotaryEmbedding):
     """RotaryEmbedding extended with linear scaling. Credits to the Reddit user /u/kaiokendev"""
 
     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0):
         self.scaling_factor = scaling_factor
-        super().__init__(dim, max_position_embeddings, base, device)
-
-    def forward(self, x, position_ids, seq_len=None):
-        # difference to the original RoPE: a scaling factor is aplied to the position ids
-        position_ids = position_ids.float() / self.scaling_factor
-        cos, sin = super().forward(x, position_ids, seq_len)
-        return cos, sin
+        super().__init__(dim, max_position_embeddings*scaling_factor, base, device)
 
 
+    def _set_cos_sin_cache(self, seq_len):
+        self.max_seq_len_cached = seq_len
+        # [seq_len]
+        t = torch.arange(seq_len).float()
+        t = t / self.scaling_factor
+        # [seq_len, dim/2]
+        freqs = torch.einsum("i,j->ij", t, self.inv_freq)
+        # Different from paper, but it uses a different permutation in order to obtain the same calculation
+        # [seq_len, dim]
+        emb = torch.concat([freqs, freqs], axis=-1)
+        # [1, seqlen, 1, dim]
+        self.cos_cached = emb.cos()[None, :, None, :]
+        self.sin_cached = emb.sin()[None, :, None, :]
+        
+        
+        
 class DynamicNTKScalingRotaryEmbedding(RotaryEmbedding):
     """RotaryEmbedding extended with Dynamic NTK scaling. Credits to the Reddit users /u/bloc97 and /u/emozilla"""
 
@@ -181,66 +237,138 @@ def rotate_half(x):
     return torch.cat((-x2, x1), dim=-1)
 
 
-def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
-    """Applies Rotary Position Embedding to the query and key tensors.
+# def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
+#     """Applies Rotary Position Embedding to the query and key tensors.
 
-    Args:
-        q (`torch.Tensor`): The query tensor.
-        k (`torch.Tensor`): The key tensor.
-        cos (`torch.Tensor`): The cosine part of the rotary embedding.
-        sin (`torch.Tensor`): The sine part of the rotary embedding.
-        position_ids (`torch.Tensor`, *optional*):
-            Deprecated and unused.
-        unsqueeze_dim (`int`, *optional*, defaults to 1):
-            The 'unsqueeze_dim' argument specifies the dimension along which to unsqueeze cos[position_ids] and
-            sin[position_ids] so that they can be properly broadcasted to the dimensions of q and k. For example, note
-            that cos[position_ids] and sin[position_ids] have the shape [batch_size, seq_len, head_dim]. Then, if q and
-            k have the shape [batch_size, heads, seq_len, head_dim], then setting unsqueeze_dim=1 makes
-            cos[position_ids] and sin[position_ids] broadcastable to the shapes of q and k. Similarly, if q and k have
-            the shape [batch_size, seq_len, heads, head_dim], then set unsqueeze_dim=2.
-    Returns:
-        `tuple(torch.Tensor)` comprising of the query and key tensors rotated using the Rotary Position Embedding.
-    """
-    cos = cos.unsqueeze(unsqueeze_dim)
-    sin = sin.unsqueeze(unsqueeze_dim)
+#     Args:
+#         q (`torch.Tensor`): The query tensor.
+#         k (`torch.Tensor`): The key tensor.
+#         cos (`torch.Tensor`): The cosine part of the rotary embedding.
+#         sin (`torch.Tensor`): The sine part of the rotary embedding.
+#         position_ids (`torch.Tensor`, *optional*):
+#             Deprecated and unused.
+#         unsqueeze_dim (`int`, *optional*, defaults to 1):
+#             The 'unsqueeze_dim' argument specifies the dimension along which to unsqueeze cos[position_ids] and
+#             sin[position_ids] so that they can be properly broadcasted to the dimensions of q and k. For example, note
+#             that cos[position_ids] and sin[position_ids] have the shape [batch_size, seq_len, head_dim]. Then, if q and
+#             k have the shape [batch_size, heads, seq_len, head_dim], then setting unsqueeze_dim=1 makes
+#             cos[position_ids] and sin[position_ids] broadcastable to the shapes of q and k. Similarly, if q and k have
+#             the shape [batch_size, seq_len, heads, head_dim], then set unsqueeze_dim=2.
+#     Returns:
+#         `tuple(torch.Tensor)` comprising of the query and key tensors rotated using the Rotary Position Embedding.
+#     """
+#     print("cos")
+#     print(cos.shape)
+    
+#     cos = cos.squeeze(0)  # [seq_len, dim]
+#     sin = sin.squeeze(0)  # [seq_len, dim]
+#     print("position_ids")
+#     print(position_ids.shape)
+#     print("cos")
+#     print(cos.shape)
+
+#     cos = cos[position_ids].unsqueeze(1)  # [bs, 1, seq_len, dim]
+#     sin = sin[position_ids].unsqueeze(1)  # [bs, 1, seq_len, dim]
+#     q_embed = (q.float() * cos) + (rotate_half(q.float()) * sin)
+#     k_embed = (k.float() * cos) + (rotate_half(k.float()) * sin)
+#     return q_embed.to(q.dtype), k_embed.to(k.dtype)
+
+#     # cos = cos[position_ids].unsqueeze(unsqueeze_dim)
+#     # sin = sin[position_ids].unsqueeze(unsqueeze_dim)
+
+
+#     # q_embed = (q * cos) + (rotate_half(q) * sin)
+#     # k_embed = (k * cos) + (rotate_half(k) * sin)
+#     # return q_embed, k_embed
+
+
+# class RotaryEmbedding(nn.Module):
+#     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
+#         super().__init__()
+#         self.dim = dim
+#         self.max_position_embeddings = max_position_embeddings
+#         self.base = base
+#         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2, dtype=torch.int64).float().to(device) / self.dim))
+#         self.register_buffer("inv_freq", inv_freq, persistent=False)
+
+#     @property
+#     def sin_cached(self):
+#         return self._sin_cached
+
+#     @property
+#     def cos_cached(self):
+#         return self._cos_cached
+
+#     def forward(self, x, position_ids, seq_len=None):
+
+#         # x: [bs, num_attention_heads, seq_len, head_size]
+        
+#         print("RotaryEmbedding")
+#         print(x.shape)
+#         print(position_ids.shape)
+           
+#         inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, x.size(2))
+#         position_ids_expanded = position_ids[:, None, :].float().cuda()
+#         print(inv_freq_expanded.shape)
+        
+#         print(position_ids_expanded.shape)
+        
+#         freqs = (inv_freq_expanded @ position_ids_expanded).transpose(1, 2)
+#         emb = torch.cat((freqs, freqs), dim=-1)
+#         cos = emb.cos().to(dtype=x.dtype)
+#         sin = emb.sin().to(dtype=x.dtype)
+#         # backwards compatibility
+#         self._cos_cached = cos
+#         self._sin_cached = sin
+#         return cos, sin
+#     # def forward(self, x, position_ids, seq_len=None):
+#     #     # x: [bs, num_attention_heads, seq_len, head_size]
+#     #     print(x.shape)
+#     #     print(position_ids.shape)
+           
+#     #     inv_freq_expanded = self.inv_freq[None, :, None].expand(-1, -1, position_ids.shape[1])
+#     #     print(inv_freq_expanded.shape)
+        
+#     #     position_ids_expanded = position_ids[:, None, :].float().cuda()
+#     #     print(position_ids_expanded.shape)
+        
+#     #     # freqs = torch.einsum('bij,bkj->bik', inv_freq_expanded, position_ids_expanded)
+#     #     # emb = torch.cat((freqs, freqs), dim=-1)
+#     #     # cos = emb.cos().to(dtype=x.dtype)
+#     #     # sin = emb.sin().to(dtype=x.dtype)
+        
+#     #     freqs = (inv_freq_expanded @ position_ids_expanded).transpose(1, 2)
+#     #     emb = torch.cat((freqs, freqs), dim=-1)
+#     #     cos = emb.cos().to(dtype=x.dtype)
+#     #     sin = emb.sin().to(dtype=x.dtype)
+#     #     # backwards compatibility
+#     #     self._cos_cached = cos
+#     #     self._sin_cached = sin
+#     #     return cos, sin
+        
+
+
+def apply_rotary_pos_emb(q, k, cos, sin):
+
+    # if position_ids is None:
+    #     # Note: Only for LlamaForCausalLMPipe model pretraining
+    #     cos = cos[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
+    #     sin = sin[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
+    # else:
+    #     cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
+    #     sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
+    #     cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+    #     sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+    
+    # Note: Only for LlamaForCausalLMPipe model pretraining
+    cos = cos[:, : q.shape[1], :, :].cuda()  # [bs, seq_len, 1, dim]
+    sin = sin[:, : q.shape[1], :, :] .cuda() # [bs, seq_len, 1, dim]
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
+        
 
-
-class RotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
-        super().__init__()
-        self.dim = dim
-        self.max_position_embeddings = max_position_embeddings
-        self.base = base
-        inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2, dtype=torch.int64).float().to(device) / self.dim))
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
-
-    @property
-    def sin_cached(self):
-        return self._sin_cached
-
-    @property
-    def cos_cached(self):
-        return self._cos_cached
-
-    def forward(self, x, position_ids, seq_len=None):
-
-        # x: [bs, num_attention_heads, seq_len, head_size]
-
-        inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
-        position_ids_expanded = position_ids[:, None, :].float()
-        freqs = (inv_freq_expanded @ position_ids_expanded).transpose(1, 2)
-        emb = torch.cat((freqs, freqs), dim=-1)
-        cos = emb.cos().to(dtype=x.dtype)
-        sin = emb.sin().to(dtype=x.dtype)
-        # backwards compatibility
-        self._cos_cached = cos
-        self._sin_cached = sin
-        return cos, sin
-
-
+        
 
 def get_act_fun(act_fun):
     if act_fun == "relu":
@@ -326,6 +454,7 @@ class GeneralizedXNorAttention(nn.Module):
         
         if self.add_rope:
             if add_pi:
+            
                 scaling_factor = max_length // base_length
                 self.rotary_emb = LinearScalingRotaryEmbedding(
                         n_feat // n_head,
@@ -394,15 +523,32 @@ class GeneralizedXNorAttention(nn.Module):
         # position_ids = attention_mask.long().cumsum(-1) - 1
         # position_ids.masked_fill_(attention_mask == 0, 1)
         #FIXME: Change this to correct shapes 
-        position_ids = torch.arange(queries[0].shape[1]).unsqueeze(0).unsqueeze(0)
-
-        cos, sin = self.rotary_emb(values, position_ids)
+        # position_ids = torch.arange(queries[0].shape[1]).unsqueeze(0).unsqueeze(0)
+     
+        # [seq_len, dim]
         
+        # position_ids = torch.arange(0, src_len).expand((bsz, src_len))
+      
+        # # position_ids = torch.arange(0, src_len).unsqueeze(-1).expand(-1, head_dim).unsqueeze(0)
+        # print("position_ids.shape")
+        # print(position_ids.shape)
+        
+
+
+   
+        cos, sin = self.rotary_emb(values, src_len)
+        # batch size , number of heads, sequence length, head dimensions 
+        # print(cos.shape)
+        
+        # print("#"*4)
+        # outputs = [apply_rotary_pos_emb(query_state, key_state, cos, sin) for (query_state,key_state) in zip(queries,keys)]
+
         outputs = [apply_rotary_pos_emb(query_state.permute(1,2,0,3), key_state.permute(1,2,0,3), cos, sin) for (query_state,key_state) in zip(queries,keys)]
         
         query_states, key_states = [x[0].permute(2,0,1,3) for x in outputs],[x[1].permute(2,0,1,3) for x in outputs]
+        # query_states, key_states = [x[0] for x in outputs],[x[1]  for x in outputs]
 
-        return query_states,key_states
+        return query_states, key_states
 
 
     def forward(
@@ -461,7 +607,7 @@ class GeneralizedXNorAttention(nn.Module):
             keys.append(1 - keys[-1])
 
         if self.add_rope:
-            queries,keys = self.add_rope_posenc(queries,keys,v,src_len,tgt_len)
+            queries,keys = self.add_rope_posenc(queries,keys,value,src_len,tgt_len)
 
         queries = [
             query.contiguous().view(-1, bsz * n_head, head_dim).transpose(0, 1)

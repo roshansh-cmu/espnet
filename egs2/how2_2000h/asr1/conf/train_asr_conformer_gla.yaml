@@ -4,6 +4,7 @@ batch_bins: 180000
 accum_grad: 10
 
 max_epoch: 100
+unused_parameters: True
 patience: none
 init: xavier_uniform
 best_model_criterion:
@@ -70,7 +71,7 @@ ctc_conf:
 #  n_fft: 512
 #  hop_length: 256
 
-  # unused_parameters: True
+  
 specaug: specaug
 specaug_conf:
     apply_time_warp: true

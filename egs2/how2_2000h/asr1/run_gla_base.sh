@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
-set -u
-set -o pipefail
+# set -e
+# set -u
+# set -o pipefail
 
 train_set="tr_2000h_utt"
 valid_set="cv05_utt"
@@ -27,12 +27,12 @@ use_lm=false
     --feats_type ${feats_type} \
     --token_type ${token_type} \
     --nbpe ${nbpe} \
+    --ngpu 8 \
     --nlsyms_txt ${nlsyms} \
     --bpe_nlsyms ${bpe_nlsyms} \
     --use_lm ${use_lm} \
     --asr_config "${asr_config}" \
-    --stage 11 \
-    --asr_stats_dir exp/asr_stats_fbank43_utt \
+    --stage  11\
     --asr_tag asr_fbank_fnet \
     --inference_config "${inference_config}" \
     --train_set "${train_set}" \
@@ -40,3 +40,5 @@ use_lm=false
     --test_sets "${test_sets}" \
     --max_wav_duration 30 \
     --bpe_train_text "data/${train_set}/text" "$@"
+
+    # --asr_stats_dir exp/asr_stats_fbank43_utt \

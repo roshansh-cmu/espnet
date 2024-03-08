@@ -145,6 +145,7 @@ preencoder_choices = ClassChoices(
 encoder_choices = ClassChoices(
     "encoder",
     classes=dict(
+        generalized_linear_conformer=GeneralizedXnorConformerEncoder,
         conformer=ConformerEncoder,
         transformer=TransformerEncoder,
         transformer_multispkr=TransformerEncoderMultiSpkr,
@@ -163,7 +164,7 @@ encoder_choices = ClassChoices(
         avhubert=FairseqAVHubertEncoder,
         fnet_conformer=FNetConformerEncoder,
         flash_conformer=FlashConformerEncoder,
-        generalized_linear_conformer=GeneralizedXnorConformerEncoder,
+        
 
     ),
     type_check=AbsEncoder,
